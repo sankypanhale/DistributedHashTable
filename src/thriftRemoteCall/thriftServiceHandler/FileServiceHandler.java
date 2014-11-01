@@ -656,7 +656,7 @@ public class FileServiceHandler implements FileStore.Iface{
 	@Override
 	public void remove() throws SystemException, TException {
 		// TODO Auto-generated method stub
-		
+		System.out.println("remove is called...!!");
 	}
 
 
