@@ -50,7 +50,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		fingertable = new ArrayList<NodeID>();
 		meNode = new NodeID();
 		meNode.port = port;
-		
+
 		try {
 			meNode.ip = Inet4Address.getLocalHost().getHostAddress();
 
@@ -60,7 +60,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		}
 		meNode.id = getSHAHash(meNode.ip+":"+port);
 
-/*		System.out.println("Big integer valued to: "+tempBig);
+		/*		System.out.println("Big integer valued to: "+tempBig);
 		System.out.println("Ip is current machine is: "+meNode.ip+":"+port);
 		System.out.println("Current Node Hash key is: "+meNode.id);*/
 		sucessor = new NodeID();
@@ -195,28 +195,28 @@ public class FileServiceHandler implements FileStore.Iface{
 			}*/
 			//if(fileexist)
 			//{
-				//file exist on the server
-			
-			
-				rFile = filemap.get(filename);
-				if(rFile.getMeta().getDeleted() != 0)
-				{
-					excep = new SystemException();
-					excep.setMessage("File have been deleted..!!");
-					throw excep;
-				}
-				if(owner.equals(rFile.getMeta().getOwner()))
-				{
-					//files belongs to same user
-					return rFile;
-				}
-				else
-				{
-					//file does not belong to user
-					excep = new SystemException();
-					excep.setMessage("File does not belong to user "+owner);
-					throw excep;
-				}
+			//file exist on the server
+
+
+			rFile = filemap.get(filename);
+			if(rFile.getMeta().getDeleted() != 0)
+			{
+				excep = new SystemException();
+				excep.setMessage("File have been deleted..!!");
+				throw excep;
+			}
+			if(owner.equals(rFile.getMeta().getOwner()))
+			{
+				//files belongs to same user
+				return rFile;
+			}
+			else
+			{
+				//file does not belong to user
+				excep = new SystemException();
+				excep.setMessage("File does not belong to user "+owner);
+				throw excep;
+			}
 			/*}
 			else
 			{
@@ -300,17 +300,17 @@ public class FileServiceHandler implements FileStore.Iface{
 
 	@Override
 	public NodeID findSucc(String key) throws SystemException, TException {
-		
+
 		TTransport transport = null;
 		TProtocol protocol = null;
 		//System.out.println("Hash key for owner:filename is: " + key);
 		NodeID nodetoconnect = null;
 		NodeID nodetoreturn = null;
-	
+
 		//BigInteger equivalent of key
 		byte[] b = new BigInteger(key,16).toByteArray();
 		BigInteger tempBig2 = new BigInteger(b);
-//		System.out.println("Biginterger for key is:"+ tempBig2);
+		//		System.out.println("Biginterger for key is:"+ tempBig2);
 
 		SystemException excep = null;
 		try{
@@ -337,7 +337,7 @@ public class FileServiceHandler implements FileStore.Iface{
 
 			nodetoconnect = findPred(key);
 			//System.out.println("I have found predesor : "+ nodetoconnect);
-			
+
 			if(nodetoconnect.getId() == meNode.getId())
 			{
 				// if the sucessor is same node
@@ -407,7 +407,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		{
 			//condition is satisfied for the last node in the chord
 			//first finger table entry will less than current node key
-			
+
 			//System.out.println("I am in new base case 1 ");
 
 			//BigInteger equivalent of key so that perform arithmetic 
@@ -614,16 +614,16 @@ public class FileServiceHandler implements FileStore.Iface{
 	@Override
 	public void setNodePred(NodeID nodeId) throws SystemException, TException {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 
 
 	@Override
 	public void updateFinger(int idx, NodeID nodeId) throws SystemException,
-			TException {
+	TException {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 
@@ -638,9 +638,9 @@ public class FileServiceHandler implements FileStore.Iface{
 
 	@Override
 	public void pushUnownedFiles(List<RFile> files) throws SystemException,
-			TException {
+	TException {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 
@@ -648,7 +648,32 @@ public class FileServiceHandler implements FileStore.Iface{
 	@Override
 	public void join(NodeID nodeId) throws SystemException, TException {
 		// TODO Auto-generated method stub
+		int i;
+		NodeID nodeentrytoadd = null;
+		List<NodeID> newfingertable = null;
+		String key = null;
+		BigInteger bigtwo = new BigInteger("2");
+		BigInteger twopowervalue = null;
+		BigInteger bignewkey = null;
+		BigInteger keygenertor = null;
+		//get key for the current node
+		String id = getSHAHash(nodeId.getIp(),Integer.toString(nodeId.getPort()));
+		nodeId.setId(id);
 		
+		//BigInteger equivalent of key
+		byte[] b = new BigInteger(nodeId.getId(),16).toByteArray();
+		BigInteger tempBig2 = new BigInteger(b);
+		System.out.println("Biginterger for newly joining is:"+ tempBig2);
+		
+		newfingertable = new ArrayList<NodeID>();
+		for(i=1; i<256; i++)
+		{
+			twopowervalue = bigtwo.pow(i-1);
+			bignewkey = twopowervalue.add(tempBig2);
+			key = bignewkey.toString(16);
+			nodeentrytoadd = findSucc(key);
+			newfingertable.add(i-1,nodeentrytoadd);
+		}
 	}
 
 
@@ -659,5 +684,25 @@ public class FileServiceHandler implements FileStore.Iface{
 		System.out.println("remove is called...!!");
 	}
 
-
+	public static String getSHAHash(String ip,String port)
+	{
+		String tobehashed = null;
+		tobehashed = ip+":"+port;
+		StringBuffer sbuff = null;
+		sbuff = new StringBuffer();
+		SystemException excep = null;
+		try {
+			MessageDigest md = MessageDigest.getInstance("SHA-256");
+			md.update(tobehashed.getBytes());
+			byte[] digest = md.digest();
+			sbuff = new StringBuffer();
+			for (byte b : digest) {
+				sbuff.append(String.format("%02x", b & 0xff));
+			}
+		} catch (NoSuchAlgorithmException e) {
+			excep = new SystemException();
+			excep.setMessage("Error while generating SHA-256 Hash Code for new node.");	
+		}
+		return sbuff.toString();
+	}
 }
