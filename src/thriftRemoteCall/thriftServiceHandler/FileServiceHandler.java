@@ -40,6 +40,7 @@ public class FileServiceHandler implements FileStore.Iface{
 	private NodeID meNode;
 	private List<NodeID> fingertable;
 	private NodeID sucessor;
+	private NodeID predecessor;
 	private HashMap<String, RFile> filemap;
 	private String workingDir;
 	private File directory;
@@ -47,7 +48,7 @@ public class FileServiceHandler implements FileStore.Iface{
 	private static BigInteger tempBig;
 	public FileServiceHandler(int port) {
 		filemap = new HashMap<String, RFile>();
-		fingertable = new ArrayList<NodeID>();
+		//	fingertable = new ArrayList<NodeID>();
 		meNode = new NodeID();
 		meNode.port = port;
 
@@ -575,41 +576,6 @@ public class FileServiceHandler implements FileStore.Iface{
 	}
 
 
-	public NodeID getMeNode() {
-		return meNode;
-	}
-	public void setMeNode(NodeID meNode) {
-		this.meNode = meNode;
-	}
-	public NodeID getSucessor() {
-		return sucessor;
-	}
-	public void setSucessor(NodeID sucessor) {
-		this.sucessor = sucessor;
-	}
-	public HashMap<String, RFile> getFilemap() {
-		return filemap;
-	}
-	public void setFilemap(HashMap<String, RFile> filemap) {
-		this.filemap = filemap;
-	}
-	public String getWorkingDir() {
-		return workingDir;
-	}
-	public void setWorkingDir(String workingDir) {
-		this.workingDir = workingDir;
-	}
-	public File getDirectory() {
-		return directory;
-	}
-	public void setDirectory(File directory) {
-		this.directory = directory;
-	}
-	public List<NodeID> getFingertable() {
-		return fingertable;
-	}
-
-
 
 	@Override
 	public void setNodePred(NodeID nodeId) throws SystemException, TException {
@@ -648,59 +614,89 @@ public class FileServiceHandler implements FileStore.Iface{
 	@Override
 	public void join(NodeID nodeId) throws SystemException, TException {
 		// TODO Auto-generated method stub
+		TTransport transport = null;
+		TProtocol protocol = null;
+
 		int i;
 		NodeID nodeentrytoadd = null;
-		List<NodeID> newfingertable = null;
+		NodeID nodetosetaspredecessor = null; 
 		String key = null;
 		BigInteger bigtwo = new BigInteger("2");
 		BigInteger twopowervalue = null;
 		BigInteger bignewkey = null;
-		BigInteger keygenertor = null;
-
+		
+		fingertable = new ArrayList<NodeID>();
 		if(nodeId == null)
 		{
 			// the first node
 			// calculate the finger table and set to current node
-			
-			//get key for the current node (this node)
-			String id = getSHAHash(this.getMeNode().getIp(),Integer.toString(this.getMeNode().getPort()));
-			this.getMeNode().setId(id);
-
-			//BigInteger equivalent of key
-			byte[] b = new BigInteger(this.getMeNode().getIp(),16).toByteArray();
-			BigInteger tempBig2 = new BigInteger(b);
-			System.out.println("Biginterger for newly joining is:"+ tempBig2);
-			for(i=1; i<256; i++)
+			for(i=1; i<=256; i++)
 			{
-				twopowervalue = bigtwo.pow(i-1);
-				bignewkey = twopowervalue.add(tempBig2);
-				key = bignewkey.toString(16);
-				nodeentrytoadd = findSucc(key);
-				this.fingertable.add(i-1,nodeentrytoadd);
+				//every entry will point to node itself
+				this.fingertable.add(i-1,this.meNode);
 			}
+			//successor and predecessor of this node is the node itself
+			this.sucessor = this.getMeNode();
+			this.predecessor = this.getMeNode();
 		}
 		else
 		{
 			//not the first node
-			
-			//get key for the current node
-			String id = getSHAHash(nodeId.getIp(),Integer.toString(nodeId.getPort()));
-			nodeId.setId(id);
-
-			//BigInteger equivalent of key
-			byte[] b = new BigInteger(nodeId.getId(),16).toByteArray();
+			//BigInteger equivalent of new node key
+			byte[] b = new BigInteger(this.meNode.getId(),16).toByteArray();
 			BigInteger tempBig2 = new BigInteger(b);
-			System.out.println("Biginterger for newly joining is:"+ tempBig2);
+			System.out.println("Biginterger for newly joining node is:"+ tempBig2);
 
-			newfingertable = new ArrayList<NodeID>();
-			for(i=1; i<256; i++)
+			//initialize the finger table	
+			for(i=1; i<=256; i++)
 			{
 				twopowervalue = bigtwo.pow(i-1);
 				bignewkey = twopowervalue.add(tempBig2);
 				key = bignewkey.toString(16);
-				nodeentrytoadd = findSucc(key);
-				newfingertable.add(i-1,nodeentrytoadd);
+
+				//make RPC call to find successor of the above key
+				transport = new TSocket(nodeId.getIp(), nodeId.getPort());
+				transport.open();
+				protocol = new TBinaryProtocol(transport);
+				FileStore.Client client = new FileStore.Client(protocol);
+				nodeentrytoadd = client.findSucc(key);
+				transport.close();
+				//add the successor entry to the fingertable of current node
+				this.fingertable.add(i-1,nodeentrytoadd);
+
+				/*if(i == 1)
+				{
+					//set the predecessor of the current node
+					// the predecessor of the successor 
+				}
+				 */
 			}
+			
+			//set the successor of the newnode
+			this.sucessor = this.fingertable.get(0);
+
+			//set the predecessor of the newnode
+			//the predecessor of the successor will be the predecessor of the newnode
+			// make RPC call to successor to get it's predecessor
+			transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			transport.open();
+			protocol = new TBinaryProtocol(transport);
+			FileStore.Client client = new FileStore.Client(protocol);
+			//RPC call on the successor node to findPred method with 
+			// key = key of successor which will give predecessor of successor
+			nodetosetaspredecessor = client.findPred(this.getSucessor().getId());
+			this.predecessor = nodetosetaspredecessor;
+			transport.close();
+
+			//update the predecessor of the successor
+			// make RPC call to successor to set it's predecessor to newnode
+			transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			transport.open();
+			protocol = new TBinaryProtocol(transport);
+			FileStore.Client client2 = new FileStore.Client(protocol);
+			client2.setNodePred(this.meNode);
+			transport.close();
+
 		}
 	}
 
@@ -733,4 +729,41 @@ public class FileServiceHandler implements FileStore.Iface{
 		}
 		return sbuff.toString();
 	}
+
+	public NodeID getMeNode() {
+		return meNode;
+	}
+	public void setMeNode(NodeID meNode) {
+		this.meNode = meNode;
+	}
+	public NodeID getSucessor() {
+		return sucessor;
+	}
+	public void setSucessor(NodeID sucessor) {
+		this.sucessor = sucessor;
+	}
+	public HashMap<String, RFile> getFilemap() {
+		return filemap;
+	}
+	public void setFilemap(HashMap<String, RFile> filemap) {
+		this.filemap = filemap;
+	}
+	public String getWorkingDir() {
+		return workingDir;
+	}
+	public void setWorkingDir(String workingDir) {
+		this.workingDir = workingDir;
+	}
+	public File getDirectory() {
+		return directory;
+	}
+	public void setDirectory(File directory) {
+		this.directory = directory;
+	}
+	public List<NodeID> getFingertable() {
+		return fingertable;
+	}
+
+
+
 }
