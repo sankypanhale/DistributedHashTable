@@ -656,23 +656,51 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger twopowervalue = null;
 		BigInteger bignewkey = null;
 		BigInteger keygenertor = null;
-		//get key for the current node
-		String id = getSHAHash(nodeId.getIp(),Integer.toString(nodeId.getPort()));
-		nodeId.setId(id);
-		
-		//BigInteger equivalent of key
-		byte[] b = new BigInteger(nodeId.getId(),16).toByteArray();
-		BigInteger tempBig2 = new BigInteger(b);
-		System.out.println("Biginterger for newly joining is:"+ tempBig2);
-		
-		newfingertable = new ArrayList<NodeID>();
-		for(i=1; i<256; i++)
+
+		if(nodeId == null)
 		{
-			twopowervalue = bigtwo.pow(i-1);
-			bignewkey = twopowervalue.add(tempBig2);
-			key = bignewkey.toString(16);
-			nodeentrytoadd = findSucc(key);
-			newfingertable.add(i-1,nodeentrytoadd);
+			// the first node
+			// calculate the finger table and set to current node
+			
+			//get key for the current node (this node)
+			String id = getSHAHash(this.getMeNode().getIp(),Integer.toString(this.getMeNode().getPort()));
+			this.getMeNode().setId(id);
+
+			//BigInteger equivalent of key
+			byte[] b = new BigInteger(this.getMeNode().getIp(),16).toByteArray();
+			BigInteger tempBig2 = new BigInteger(b);
+			System.out.println("Biginterger for newly joining is:"+ tempBig2);
+			for(i=1; i<256; i++)
+			{
+				twopowervalue = bigtwo.pow(i-1);
+				bignewkey = twopowervalue.add(tempBig2);
+				key = bignewkey.toString(16);
+				nodeentrytoadd = findSucc(key);
+				this.fingertable.add(i-1,nodeentrytoadd);
+			}
+		}
+		else
+		{
+			//not the first node
+			
+			//get key for the current node
+			String id = getSHAHash(nodeId.getIp(),Integer.toString(nodeId.getPort()));
+			nodeId.setId(id);
+
+			//BigInteger equivalent of key
+			byte[] b = new BigInteger(nodeId.getId(),16).toByteArray();
+			BigInteger tempBig2 = new BigInteger(b);
+			System.out.println("Biginterger for newly joining is:"+ tempBig2);
+
+			newfingertable = new ArrayList<NodeID>();
+			for(i=1; i<256; i++)
+			{
+				twopowervalue = bigtwo.pow(i-1);
+				bignewkey = twopowervalue.add(tempBig2);
+				key = bignewkey.toString(16);
+				nodeentrytoadd = findSucc(key);
+				newfingertable.add(i-1,nodeentrytoadd);
+			}
 		}
 	}
 
