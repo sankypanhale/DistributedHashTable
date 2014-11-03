@@ -708,6 +708,47 @@ public class FileServiceHandler implements FileStore.Iface{
 		System.out.println("remove is called...!!");
 	}
 
+	public void update_others()
+	{
+		int i;
+		NodeID nodep = null;
+		BigInteger bigkey = null;
+		BigInteger bignewkey = null;
+		BigInteger bigtwo = new BigInteger("2");
+		BigInteger twopowervalue = null;
+		BigInteger subvalue = null;
+		SystemException excep = null;
+		String key = null;
+		for(i=0; i<=256; i++)
+		{
+			bigkey = getBigIntegerEquivalent(this.getMeNode().id);
+			twopowervalue = bigtwo.pow(i-1);
+			subvalue = bigkey.subtract(twopowervalue);
+			key = getHexStringEquuivalent(subvalue);
+			try {
+				nodep = findPred(key);
+			} catch (SystemException e) {
+				//throw e;
+			} catch (TException e) {
+				//throw e;
+			}
+		}
+	}
+	
+	public BigInteger getBigIntegerEquivalent(String key)
+	{
+		byte[] b = new BigInteger(this.meNode.getId(),16).toByteArray();
+		BigInteger tempBig2 = new BigInteger(b);
+		//System.out.println("Biginterger for newly joining node is:"+ tempBig2);
+		return tempBig2;
+	}
+	public String getHexStringEquuivalent(BigInteger b)
+	{
+		String key;
+		key = b.toString(16);
+		return key;
+	}
+	
 	public static String getSHAHash(String ip,String port)
 	{
 		String tobehashed = null;
