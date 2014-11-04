@@ -697,6 +697,9 @@ public class FileServiceHandler implements FileStore.Iface{
 			client2.setNodePred(this.meNode);
 			transport.close();
 
+			
+			//call update others method to update finger table
+			update_others();
 		}
 	}
 
@@ -710,6 +713,8 @@ public class FileServiceHandler implements FileStore.Iface{
 
 	public void update_others()
 	{
+		TTransport transport = null;
+		TProtocol protocol = null;
 		int i;
 		NodeID nodep = null;
 		BigInteger bigkey = null;
@@ -719,14 +724,43 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger subvalue = null;
 		SystemException excep = null;
 		String key = null;
-		for(i=0; i<=256; i++)
+		for(i=0; i<256; i++)
 		{
 			bigkey = getBigIntegerEquivalent(this.getMeNode().id);
-			twopowervalue = bigtwo.pow(i-1);
+			twopowervalue = bigtwo.pow(i);
 			subvalue = bigkey.subtract(twopowervalue);
 			key = getHexStringEquuivalent(subvalue);
 			try {
+				//get node p
 				nodep = findPred(key);
+				
+				//calculate (p + 2^i) = addvalue 
+				BigInteger pkey = getBigIntegerEquivalent(nodep.getId());
+				BigInteger addvalue = pkey.add(twopowervalue);
+				
+				//check if this addvalue is in between pred(newnode) and newnode
+				//convert this add value to hexString to compare
+				String addValString = getHexStringEquuivalent(addvalue);
+				
+				if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
+				{
+					//the add value should be greater than predecessor of newnode
+					//check the condition why added equal to sign
+					if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
+					{
+						//the add value should be less than the newnode
+						
+						//if both above conditions are satisfied then make RPC
+						//call to updatefinger on node P
+						transport = new TSocket(nodep.getIp(), nodep.getPort());
+						transport.open();
+						protocol = new TBinaryProtocol(transport);
+						FileStore.Client client = new FileStore.Client(protocol);
+						client.updateFinger(i-1, this.meNode);
+						transport.close();
+					}
+				}
+				
 			} catch (SystemException e) {
 				//throw e;
 			} catch (TException e) {
