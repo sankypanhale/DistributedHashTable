@@ -61,10 +61,18 @@ public class FileServiceHandler implements FileStore.Iface{
 		}
 		meNode.id = getSHAHash(meNode.ip+":"+port);
 
-		/*		System.out.println("Big integer valued to: "+tempBig);
+		System.out.println("Big integer valued to: "+tempBig);
 		System.out.println("Ip is current machine is: "+meNode.ip+":"+port);
-		System.out.println("Current Node Hash key is: "+meNode.id);*/
-		sucessor = new NodeID();
+		System.out.println("Current Node Hash key is: "+meNode.id);
+		//sucessor = new NodeID();
+
+		System.out.println("FIngertable before init:"+fingertable);
+
+		//calling function to initialise fingertable
+		init_fingertable();
+
+		System.out.println("FIngertable after init:"+fingertable);
+		System.out.println("Size of finger table is:"+fingertable.size());
 		workingDir = "./files/";
 		//code to clean the working directory
 		directory = new File(workingDir);
@@ -624,30 +632,24 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger bigtwo = new BigInteger("2");
 		BigInteger twopowervalue = null;
 		BigInteger bignewkey = null;
-		
-		fingertable = new ArrayList<NodeID>();
-		if(nodeId == null)
+
+
+		//BigInteger equivalent of new node key
+		byte[] b = new BigInteger(nodeId.getId(),16).toByteArray();
+		BigInteger tempBig2 = new BigInteger(b);
+		System.out.println("Biginterger for newly joining node is:"+ tempBig2);
+
+		if(this.getMeNode().getId().equals(nodeId.getId()))
 		{
-			// the first node
-			// calculate the finger table and set to current node
-			for(i=1; i<=256; i++)
-			{
-				//every entry will point to node itself
-				this.fingertable.add(i-1,this.meNode);
-			}
-			//successor and predecessor of this node is the node itself
-			this.sucessor = this.getMeNode();
-			this.predecessor = this.getMeNode();
+			//condition is satisfied for the first join call
+			//no need to reintialise the finger table
+			System.out.println("First Join call");
 		}
 		else
 		{
-			//not the first node
-			//BigInteger equivalent of new node key
-			byte[] b = new BigInteger(this.meNode.getId(),16).toByteArray();
-			BigInteger tempBig2 = new BigInteger(b);
-			System.out.println("Biginterger for newly joining node is:"+ tempBig2);
-
-			//initialize the finger table	
+			System.out.println("1+ Join call");
+			//reinitialize the finger table
+			fingertable = new ArrayList<NodeID>();
 			for(i=1; i<=256; i++)
 			{
 				twopowervalue = bigtwo.pow(i-1);
@@ -671,7 +673,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				}
 				 */
 			}
-			
+
 			//set the successor of the newnode
 			this.sucessor = this.fingertable.get(0);
 
@@ -697,9 +699,9 @@ public class FileServiceHandler implements FileStore.Iface{
 			client2.setNodePred(this.meNode);
 			transport.close();
 
-			
+
 			//call update others method to update finger table
-			update_others();
+			update_others(this.sucessor,this.meNode);
 		}
 	}
 
@@ -711,7 +713,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		System.out.println("remove is called...!!");
 	}
 
-	public void update_others()
+	public void update_others(NodeID nodetoexamine,NodeID newnode)
 	{
 		TTransport transport = null;
 		TProtocol protocol = null;
@@ -724,24 +726,49 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger subvalue = null;
 		SystemException excep = null;
 		String key = null;
+		NodeID newsucessor = null;
+		try{
+			//find sucessor of nodetoexamine
+			//if it is same as new node, we will terminate this recursive call as we visited all the nodes
+			transport = new TSocket(nodetoexamine.getIp(), nodetoexamine.getPort());
+			transport.open();
+			protocol = new TBinaryProtocol(transport);
+			FileStore.Client client2 = new FileStore.Client(protocol);
+			newsucessor = client2.getNodeSucc();
+			if(newsucessor.getId().equals(newnode.getId()))
+			{
+				//base case
+				return;
+			}
+		}catch (Exception e) {
+			// TODO: handle exception
+		}
+		BigInteger addvalue = null;
+
+		List<NodeID> importedfingertable = null;
+		/*try{
+
+			transport = new TSocket(nodetoexamine.getIp(), nodetoexamine.getPort());
+			transport.open();
+			protocol = new TBinaryProtocol(transport);
+			FileStore.Client client2 = new FileStore.Client(protocol);
+			importedfingertable = client2.getFingertable();
+			transport.close();
+		}catch (Exception e) {
+			// TODO: handle exception
+		}
+		 */
 		for(i=0; i<256; i++)
 		{
-			bigkey = getBigIntegerEquivalent(this.getMeNode().id);
+			bigkey = getBigIntegerEquivalent(nodetoexamine.id);
 			twopowervalue = bigtwo.pow(i);
-			subvalue = bigkey.subtract(twopowervalue);
+			addvalue = bigkey.add(twopowervalue);
 			key = getHexStringEquuivalent(subvalue);
 			try {
-				//get node p
-				nodep = findPred(key);
-				
-				//calculate (p + 2^i) = addvalue 
-				BigInteger pkey = getBigIntegerEquivalent(nodep.getId());
-				BigInteger addvalue = pkey.add(twopowervalue);
-				
 				//check if this addvalue is in between pred(newnode) and newnode
 				//convert this add value to hexString to compare
 				String addValString = getHexStringEquuivalent(addvalue);
-				
+
 				if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
 				{
 					//the add value should be greater than predecessor of newnode
@@ -749,26 +776,43 @@ public class FileServiceHandler implements FileStore.Iface{
 					if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
 					{
 						//the add value should be less than the newnode
-						
+
 						//if both above conditions are satisfied then make RPC
 						//call to updatefinger on node P
-						transport = new TSocket(nodep.getIp(), nodep.getPort());
+						transport = new TSocket(nodetoexamine.getIp(), nodetoexamine.getPort());
 						transport.open();
 						protocol = new TBinaryProtocol(transport);
 						FileStore.Client client = new FileStore.Client(protocol);
-						client.updateFinger(i-1, this.meNode);
+						client.updateFinger(i-1, newnode);
 						transport.close();
 					}
 				}
-				
+
 			} catch (SystemException e) {
 				//throw e;
 			} catch (TException e) {
 				//throw e;
 			}
 		}
+		//make recursive call to successor of nodetoexamine
+		update_others(newsucessor, newnode);
 	}
-	
+	public void init_fingertable()
+	{
+		int i;
+		// the first node
+		// calculate the finger table and set to current node
+		fingertable = new ArrayList<NodeID>();
+		for(i=1; i<=256; i++)
+		{
+			//every entry will point to node itself
+			this.fingertable.add(i-1,this.meNode);
+		}
+		//successor and predecessor of this node is the node itself
+		this.sucessor = this.getMeNode();
+		this.predecessor = this.getMeNode();
+	}
+
 	public BigInteger getBigIntegerEquivalent(String key)
 	{
 		byte[] b = new BigInteger(this.meNode.getId(),16).toByteArray();
@@ -782,7 +826,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		key = b.toString(16);
 		return key;
 	}
-	
+
 	public static String getSHAHash(String ip,String port)
 	{
 		String tobehashed = null;
