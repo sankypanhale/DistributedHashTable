@@ -355,6 +355,12 @@ public class FileServiceHandler implements FileStore.Iface{
 				return this.getNodeSucc();
 			}
 
+			//Sanket: new condition to handle equal to case in finger table
+			if(nodetoconnect.getId().equalsIgnoreCase(key))
+			{
+				return nodetoconnect;
+			}
+			
 			//call findSucc(recursive call) on nodetoconnect using RMI
 			if(nodetoconnect != null)
 			{
@@ -459,6 +465,7 @@ public class FileServiceHandler implements FileStore.Iface{
 						// if key matches to current node
 						nodetoreturn = pred;
 						//return pred;
+						recurse = false;
 						break;
 					}
 					if(pred.getId().compareToIgnoreCase(next.getId()) > 0	)

@@ -23,7 +23,7 @@ public class Worker {
 		// TODO Auto-generated method stub
 		TTransport transport;
 		TProtocol protocol = null;
-		NodeID newnode = null;
+		NodeID existingnode = null;
 		try {
 			transport = new TSocket("localhost", 9091);
 			transport.open();
@@ -31,11 +31,11 @@ public class Worker {
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client = new FileStore.Client(protocol);
 
-			newnode = new NodeID();
-			newnode.setIp("127.0.1.1");
-			newnode.setPort(9090);
-			newnode.setId(getSHAHash(newnode.ip+":"+newnode.port));
-			client.join(newnode);
+			existingnode = new NodeID();
+			existingnode.setIp("127.0.1.1");
+			existingnode.setPort(9090);
+			existingnode.setId(getSHAHash(existingnode.ip+":"+existingnode.port));
+			client.join(existingnode);
 
 			transport.close();
 		} catch (SystemException e) {
