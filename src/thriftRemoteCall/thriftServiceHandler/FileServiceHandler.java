@@ -347,7 +347,7 @@ public class FileServiceHandler implements FileStore.Iface{
 			nodetoconnect = findPred(key);
 			//System.out.println("I have found predesor : "+ nodetoconnect);
 
-			if(nodetoconnect.getId() == meNode.getId())
+			if(nodetoconnect.getId().equalsIgnoreCase(meNode.getId()))
 			{
 				// if the sucessor is same node
 				//no need to go for RPC
@@ -493,7 +493,7 @@ public class FileServiceHandler implements FileStore.Iface{
 			if(nodetoreturn == null)
 			{
 				// this is to avoid problem when reverse entry comes at last
-				i++; i++;
+				i++; //i++;
 				if(i == fingertable.size())
 				{
 					// if last record is reached in finger table return last node
@@ -509,6 +509,14 @@ public class FileServiceHandler implements FileStore.Iface{
 			throw excep;
 		}
 		// in other condition return null
+		
+		//Sanket: to avoid the infinite loop
+		if(nodetoreturn.getId().equalsIgnoreCase(this.getMeNode().getId()))
+		{
+			//to avoid the infinite loop the returned node is same as current node
+			//System.out.println("I am avoiding the infinite loop..!!");
+			recurse = false;
+		}
 		if(recurse){
 			if(nodetoreturn != null)
 			{
@@ -642,7 +650,7 @@ public class FileServiceHandler implements FileStore.Iface{
 
 
 		//BigInteger equivalent of new node key
-		byte[] b = new BigInteger(nodeId.getId(),16).toByteArray();
+		byte[] b = new BigInteger(this.meNode.getId(),16).toByteArray();
 		BigInteger tempBig2 = new BigInteger(b);
 		System.out.println("Biginterger for newly joining node is:"+ tempBig2);
 
@@ -706,9 +714,9 @@ public class FileServiceHandler implements FileStore.Iface{
 			client2.setNodePred(this.meNode);
 			transport.close();
 
-
+			System.out.println("Printing the new finger table for newnode:"+fingertable);
 			//call update others method to update finger table
-			update_others(this.sucessor,this.meNode);
+			//update_others(this.sucessor,this.meNode);
 		}
 	}
 
@@ -770,7 +778,7 @@ public class FileServiceHandler implements FileStore.Iface{
 			bigkey = getBigIntegerEquivalent(nodetoexamine.id);
 			twopowervalue = bigtwo.pow(i);
 			addvalue = bigkey.add(twopowervalue);
-			key = getHexStringEquuivalent(subvalue);
+			key = getHexStringEquuivalent(addvalue);
 			try {
 				//check if this addvalue is in between pred(newnode) and newnode
 				//convert this add value to hexString to compare
