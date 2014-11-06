@@ -66,8 +66,6 @@ public class FileServiceHandler implements FileStore.Iface{
 		System.out.println("Current Node Hash key is: "+meNode.id);
 		//sucessor = new NodeID();
 
-		System.out.println("FIngertable before init:"+fingertable);
-
 		//calling function to initialise fingertable
 		init_fingertable();
 
@@ -360,7 +358,7 @@ public class FileServiceHandler implements FileStore.Iface{
 			{
 				return nodetoconnect;
 			}
-			
+
 			//call findSucc(recursive call) on nodetoconnect using RMI
 			if(nodetoconnect != null)
 			{
@@ -509,7 +507,7 @@ public class FileServiceHandler implements FileStore.Iface{
 			throw excep;
 		}
 		// in other condition return null
-		
+
 		//Sanket: to avoid the infinite loop
 		if(nodetoreturn.getId().equalsIgnoreCase(this.getMeNode().getId()))
 		{
@@ -563,7 +561,8 @@ public class FileServiceHandler implements FileStore.Iface{
 		if(sucessor != null)
 		{
 			//return this.sucessor;
-			return sucessor;
+			//return sucessor;
+			return this.fingertable.get(0);
 		}
 		else
 		{
@@ -603,7 +602,7 @@ public class FileServiceHandler implements FileStore.Iface{
 	@Override
 	public void setNodePred(NodeID nodeId) throws SystemException, TException {
 		// TODO Auto-generated method stub
-
+		this.predecessor = nodeId;
 	}
 
 
@@ -612,11 +611,35 @@ public class FileServiceHandler implements FileStore.Iface{
 	public void updateFinger(int idx, NodeID nodeId) throws SystemException,
 	TException {
 		// TODO Auto-generated method stub
-
+		this.fingertable.set(idx, nodeId);
 	}
 
+	/*	@Override
+	public void updateFinger(int idx, NodeID nodeId) throws SystemException,
+	TException {
+		TTransport transport = null;
+		TProtocol protocol = null;
+		// TODO Auto-generated method stub
+		NodeID nodepred = null;
+		if(this.meNode.getId().compareToIgnoreCase(nodeId.getId()) <= 0)
+		{
+			if(this.fingertable.get(idx).getId().compareToIgnoreCase(nodeId.getId()) > 0)
+			{
+				this.fingertable.set(idx, nodeId);
+				nodepred = this.predecessor;
 
+				//recursive call
+				transport = new TSocket(nodepred.getIp(), nodepred.getPort());
+				transport.open();
+				protocol = new TBinaryProtocol(transport);
+				FileStore.Client client3 = new FileStore.Client(protocol);
+				client3.updateFinger(idx, nodeId);
+				transport.close();
 
+			}
+		}
+	}
+	 */
 	@Override
 	public List<RFile> pullUnownedFiles() throws SystemException, TException {
 		// TODO Auto-generated method stub
@@ -664,7 +687,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		{
 			System.out.println("1+ Join call");
 			//reinitialize the finger table
-			fingertable = new ArrayList<NodeID>();
+			//fingertable = new ArrayList<NodeID>();
 			for(i=1; i<=256; i++)
 			{
 				twopowervalue = bigtwo.pow(i-1);
@@ -679,7 +702,8 @@ public class FileServiceHandler implements FileStore.Iface{
 				nodeentrytoadd = client.findSucc(key);
 				transport.close();
 				//add the successor entry to the fingertable of current node
-				this.fingertable.add(i-1,nodeentrytoadd);
+				this.fingertable.set(i-1,nodeentrytoadd);
+
 
 				/*if(i == 1)
 				{
@@ -714,9 +738,13 @@ public class FileServiceHandler implements FileStore.Iface{
 			client2.setNodePred(this.meNode);
 			transport.close();
 
-			System.out.println("Printing the new finger table for newnode:"+fingertable);
+
 			//call update others method to update finger table
 			//update_others(this.sucessor,this.meNode);
+			update_others();
+
+			System.out.println("Printing the new finger table for newnode:"+this.fingertable);
+			System.out.println("New size of finger table is :"+this.fingertable.size());
 		}
 	}
 
@@ -728,6 +756,268 @@ public class FileServiceHandler implements FileStore.Iface{
 		System.out.println("remove is called...!!");
 	}
 
+	//////////////////////////////////////////////////////////////
+
+	/*	public void update_others()
+	{
+		TTransport transport = null;
+		TProtocol protocol = null;
+		int i;
+		NodeID nodep = null;
+		BigInteger bigkey = null;
+		BigInteger bigtwo = new BigInteger("2");
+		BigInteger twopowervalue = null;
+		BigInteger subvalue = null;
+		BigInteger maxvalue = null;
+		SystemException excep = null;
+		NodeID nodeq = null;
+		String key = null;
+
+		//for(i=0; i<256; i++)
+		for(i=1; i<=256; i++)
+		{
+			bigkey = getBigIntegerEquivalent(this.getMeNode().id);
+			if(i==256)
+			{
+				System.out.println("I have reached the final entry in fingertable while updating");
+			}
+			//calculate (newnode - (2^i))
+			twopowervalue = bigtwo.pow(i);
+			subvalue = bigkey.subtract(twopowervalue);
+			if(subvalue.signum() == -1)
+			{
+				System.out.println("Negative subtarction..!!");
+				maxvalue = bigtwo.pow(256);
+				subvalue = subvalue.add(maxvalue);
+			}
+			key = getHexStringEquuivalent(subvalue);
+			try {
+				//get node p
+				nodep = findPred(key);
+
+				//the below code will handle the special case when (newnode - (2^i)) is 
+				//actual physical node
+				transport = new TSocket(nodep.getIp(), nodep.getPort());
+				transport.open();
+				protocol = new TBinaryProtocol(transport);
+				FileStore.Client client3 = new FileStore.Client(protocol);
+				nodeq = client3.getNodeSucc();
+				if(key.compareToIgnoreCase(nodeq.getId()) == 0)
+				{
+					//here special case is satisfied
+					nodep = nodeq;
+				}
+				transport.close();
+
+				transport = new TSocket(nodep.getIp(), nodep.getPort());
+				transport.open();
+				protocol = new TBinaryProtocol(transport);
+				FileStore.Client client = new FileStore.Client(protocol);
+				//client.updateFinger(i, this.meNode);
+				client.updateFinger(i-1, this.meNode);
+				transport.close();
+
+			} catch (SystemException e) {
+				//throw e;
+			} catch (TException e) {
+				//throw e;
+			}
+		}
+	}
+	 */	
+	////// *************************** ?? /////////////////
+
+
+
+	public void update_others()
+	{
+		TTransport transport = null;
+		TProtocol protocol = null;
+		int i;
+		NodeID nodep = null;
+		BigInteger bigkey = null;
+		BigInteger bigtwo = new BigInteger("2");
+		BigInteger twopowervalue = null;
+		BigInteger subvalue = null;
+		BigInteger maxvalue = null;
+		SystemException excep = null;
+		NodeID nodeq = null;
+		String key = null;
+		boolean change = false;
+		for(i=0; i<256; i++)
+		//for(i=1; i<=256; i++)
+		{
+			bigkey = getBigIntegerEquivalent(this.getMeNode().id);
+			if(i==256)
+			{
+				System.out.println("I have reached the final entry in fingertable while updating");
+			}
+			//calculate (newnode - (2^i))
+			twopowervalue = bigtwo.pow(i);
+			subvalue = bigkey.subtract(twopowervalue);
+			if(subvalue.signum() == -1)
+			{
+				System.out.println("Negative subtarction..!!");
+				maxvalue = bigtwo.pow(256);
+				subvalue = subvalue.add(maxvalue);
+			}
+			key = getHexStringEquuivalent(subvalue);
+			//get node p
+			try {
+				nodep = findPred(key);
+				updateExtenstion(nodep,key,i);
+				/*
+				//the below code will handle the special case when (newnode - (2^i)) is 
+				//actual physical node
+				if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+				{
+					//node need not to do the RPC
+					//to avoid the calling RPC on the the same node
+
+				}					
+				else
+				{
+					transport = new TSocket(nodep.getIp(), nodep.getPort());
+					transport.open();
+					protocol = new TBinaryProtocol(transport);
+					FileStore.Client client3 = new FileStore.Client(protocol);
+					nodeq = client3.getNodeSucc();
+					if(key.compareToIgnoreCase(nodeq.getId()) == 0)
+					{
+						//here special case is satisfied
+						nodep = nodeq;
+					}
+					transport.close();
+				}
+				//calculate (p + 2^i) = addvalue
+				BigInteger pkey = getBigIntegerEquivalent(nodep.getId());
+				BigInteger addvalue = pkey.add(twopowervalue);
+
+				//check if this addvalue is in between pred(newnode) and newnode
+				//convert this add value to hexString to compare
+				String addValString = getHexStringEquuivalent(addvalue);
+
+				if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
+				{
+					//the add value should be greater than predecessor of newnode
+					//check the condition why added equal to sign
+					if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
+					{
+						//the add value should be less than the newnode
+
+						//if both above conditions are satisfied then make RPC
+						//call to updatefinger on node P
+						if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+						{
+							//node need to do the RPC
+							//to avoid the calling RPC on the the same node
+							updateFinger(i-1, this.meNode);
+						}
+						else{
+							transport = new TSocket(nodep.getIp(), nodep.getPort());
+							transport.open();
+							protocol = new TBinaryProtocol(transport);
+							FileStore.Client client = new FileStore.Client(protocol);
+							//client.updateFinger(i, this.meNode);
+							client.updateFinger(i-1, this.meNode);
+							transport.close();
+						}
+					}
+				}*/
+			} catch (SystemException e) {
+				//throw e;
+			} catch (TException e) {
+				//throw e;
+			}
+		}
+	}
+	public void updateExtenstion(NodeID nodep,String key,int i)
+	{
+		TTransport transport = null;
+		TProtocol protocol = null;
+		NodeID nodeq = null;
+		BigInteger twopowervalue = null;
+		BigInteger bigtwo = new BigInteger("2");
+		twopowervalue = bigtwo.pow(i);
+		try{
+			//the below code will handle the special case when (newnode - (2^i)) is 
+			//actual physical node
+			if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+			{
+				//node need not to do the RPC
+				//to avoid the calling RPC on the the same node
+
+			}					
+			else
+			{
+				transport = new TSocket(nodep.getIp(), nodep.getPort());
+				transport.open();
+				protocol = new TBinaryProtocol(transport);
+				FileStore.Client client3 = new FileStore.Client(protocol);
+				nodeq = client3.getNodeSucc();
+				if(key.compareToIgnoreCase(nodeq.getId()) == 0)
+				{
+					//here special case is satisfied
+					nodep = nodeq;
+				}
+				transport.close();
+			}
+			//calculate (p + 2^i) = addvalue
+			BigInteger pkey = getBigIntegerEquivalent(nodep.getId());
+			BigInteger addvalue = pkey.add(twopowervalue);
+
+			//check if this addvalue is in between pred(newnode) and newnode
+			//convert this add value to hexString to compare
+			String addValString = getHexStringEquuivalent(addvalue);
+
+			if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
+			{
+				//the add value should be greater than predecessor of newnode
+				//check the condition why added equal to sign
+				if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
+				{
+					//the add value should be less than the newnode
+
+					//if both above conditions are satisfied then make RPC
+					//call to updatefinger on node P
+					if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+					{
+						//no need to do the RPC
+						//to avoid the calling RPC on the the same node
+						//updateFinger(i-1, this.meNode);
+						updateFinger(i, this.meNode);
+					}
+					else{
+						transport = new TSocket(nodep.getIp(), nodep.getPort());
+						transport.open();
+						protocol = new TBinaryProtocol(transport);
+						FileStore.Client client = new FileStore.Client(protocol);
+						//client.updateFinger(i, this.meNode);
+						//client.updateFinger(i-1, this.meNode);
+						client.updateFinger(i, this.meNode);
+						transport.close();
+					}
+					NodeID recursenode = findPred(nodep.getId());
+					if(recursenode.getId().compareToIgnoreCase(nodep.getId()) == 0)
+					{
+						//condition occured when there s only one node
+						return;
+					}
+					else{
+						updateExtenstion(recursenode, key, i);
+					}
+				}
+
+			}
+
+		}catch (Exception e) {
+			// TODO: handle exception
+		}
+	}
+
+	/////////////////////////////////////////////////////////////
+
+	/*
 	public void update_others(NodeID nodetoexamine,NodeID newnode)
 	{
 		TTransport transport = null;
@@ -772,8 +1062,8 @@ public class FileServiceHandler implements FileStore.Iface{
 		}catch (Exception e) {
 			// TODO: handle exception
 		}
-		 */
-		for(i=0; i<256; i++)
+	 */
+	/*		for(i=0; i<256; i++)
 		{
 			bigkey = getBigIntegerEquivalent(nodetoexamine.id);
 			twopowervalue = bigtwo.pow(i);
@@ -811,7 +1101,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		}
 		//make recursive call to successor of nodetoexamine
 		update_others(newsucessor, newnode);
-	}
+	}*/
 	public void init_fingertable()
 	{
 		int i;
@@ -830,7 +1120,7 @@ public class FileServiceHandler implements FileStore.Iface{
 
 	public BigInteger getBigIntegerEquivalent(String key)
 	{
-		byte[] b = new BigInteger(this.meNode.getId(),16).toByteArray();
+		byte[] b = new BigInteger(key,16).toByteArray();
 		BigInteger tempBig2 = new BigInteger(b);
 		//System.out.println("Biginterger for newly joining node is:"+ tempBig2);
 		return tempBig2;

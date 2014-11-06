@@ -3,6 +3,7 @@ package thriftRemoteCall.thriftClient;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -24,8 +25,10 @@ public class Worker {
 		TTransport transport;
 		TProtocol protocol = null;
 		NodeID existingnode = null;
+		List<NodeID> fingerworker = null;
 		try {
-			transport = new TSocket("localhost", 9091);
+	
+/*		 	transport = new TSocket("localhost", 9092);
 			transport.open();
 
 			protocol = new TBinaryProtocol(transport);
@@ -38,6 +41,19 @@ public class Worker {
 			client.join(existingnode);
 
 			transport.close();
+*/			
+			
+			//code to printfinger table
+		transport = new TSocket("localhost", 9092);
+			transport.open();
+
+			protocol = new TBinaryProtocol(transport);
+			FileStore.Client client2 = new FileStore.Client(protocol);
+
+			fingerworker = client2.getFingertable();
+			System.out.println("Finger table in worker is: "+fingerworker);
+			transport.close();
+		
 		} catch (SystemException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

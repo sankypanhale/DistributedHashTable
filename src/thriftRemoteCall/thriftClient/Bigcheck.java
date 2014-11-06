@@ -28,11 +28,11 @@ public class Bigcheck {
 		//BigInteger equivalent of key
 		byte[] b = new BigInteger(oldkey,16).toByteArray();
 		BigInteger tempBig2 = new BigInteger(b);
-		System.out.println("Biginterger for newly joining is:"+ tempBig2);
+		System.out.println("Biginterger equivalent of key:"+ tempBig2);
 		
 //		for(i=1; i<256; i++)
 		{
-			twopowervalue = bigtwo.pow(0);
+			twopowervalue = bigtwo.pow(256);
 			bignewkey = twopowervalue.add(tempBig2);
 			key = bignewkey.toString(16);
 			System.out.println("Old key is: "+ oldkey);
