@@ -162,7 +162,8 @@ public class FileClient {
 		String[] splitvalues = filename.split("/");
 		trimfilename = splitvalues[splitvalues.length-1];
 		//System.out.println("trimmed name is: "+ trimfilename);
-		tobehashed = owner+":"+filename;
+		//tobehashed = owner+":"+filename;
+		tobehashed = owner+":"+trimfilename;
 		StringBuffer sbuff = null;
 		sbuff = new StringBuffer();
 		SystemException excep = null;

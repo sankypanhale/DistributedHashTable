@@ -18,7 +18,7 @@ import thriftRemoteCall.thriftUtil.FileStore;
 import thriftRemoteCall.thriftUtil.NodeID;
 import thriftRemoteCall.thriftUtil.SystemException;
 
-public class Worker {
+public class RemoveWorker {
 
 	/**
 	 * @param args
@@ -27,38 +27,17 @@ public class Worker {
 		// TODO Auto-generated method stub
 		TTransport transport;
 		TProtocol protocol = null;
-		NodeID existingnode = null;
 		List<NodeID> fingerworker = null;
 		try {
 	
-	 	transport = new TSocket("localhost", 9092);
+	 	transport = new TSocket("localhost", 9090);
 			transport.open();
 
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client = new FileStore.Client(protocol);
-
-			existingnode = new NodeID();
-			existingnode.setIp("127.0.1.1");
-			existingnode.setPort(9090);
-			existingnode.setId(getSHAHash(existingnode.ip+":"+existingnode.port));
-			client.join(existingnode);
-		//	client.remove();
+			client.remove();
 
 			transport.close();
-		
-		
-			//code to printfinger table
-	/*	int port = 9090;
-		transport = new TSocket("localhost", port);
-			transport.open();
-
-			protocol = new TBinaryProtocol(transport);
-			FileStore.Client client2 = new FileStore.Client(protocol);
-
-			fingerworker = client2.getFingertable();
-			System.out.println("Finger table in worker is: "+fingerworker);
-			writeFingertable(fingerworker,port);
-			transport.close();*/
 		
 		} catch (SystemException e) {
 			// TODO Auto-generated catch block
