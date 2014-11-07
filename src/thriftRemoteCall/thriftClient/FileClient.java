@@ -83,8 +83,9 @@ public class FileClient {
 
 			
 			operationkey = getSHAHash(owner,filename);
-			//nodetoconnect = client.findSucc(operationkey);
-			nodetoconnect = client.findSucc("5d730683aeb0effe1e2ae2ba1517ddaf09ee5dc725587cbffc162378f199e4d6");
+			System.out.println("Key for file is: "+operationkey);
+			nodetoconnect = client.findSucc(operationkey);
+			//nodetoconnect = client.findSucc("5d730683aeb0effe1e2ae2ba1517ddaf09ee5dc725587cbffc162378f199e4d6");
 			transport.close();
 			
 			System.out.println("request should be processed by: "+nodetoconnect.ip+":"+nodetoconnect.port);

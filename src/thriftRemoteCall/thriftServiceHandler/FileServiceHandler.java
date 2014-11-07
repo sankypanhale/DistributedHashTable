@@ -485,7 +485,7 @@ public class FileServiceHandler implements FileStore.Iface{
 							recurse = false;
 							break;
 						}
-						
+
 					}
 					else if(key.compareToIgnoreCase(pred.getId()) > 0)
 					{
@@ -661,31 +661,98 @@ public class FileServiceHandler implements FileStore.Iface{
 		List<RFile> pulledfiles = null;
 		String currentkey = null;
 		int i;
+		RFile currentfile = null;
+		String currentowner = null;
+		String currentfilename =null;
+		String[] splitvalues = null;
+		String trimfilename = null;
+		File file = null;
+
 		pulledfiles = new ArrayList<RFile>();
-		for (Map.Entry<String, RFile> entry : this.filemap.entrySet()) {
-			RFile currentfile = entry.getValue();
-			String currentowner = currentfile.getMeta().getOwner();
-			String currentfilename = currentfile.getMeta().getFilename();
-			String[] splitvalues = currentfilename.split("/");
-			String trimfilename = splitvalues[splitvalues.length-1];
-			File file = null;
-			//System.out.println("trimmed name is: "+ trimfilename);
-			//tobehashed = owner+":"+filename;
-			currentkey = getSHAHash(currentowner+":"+trimfilename);
 
-			if(this.predecessor.getId().compareToIgnoreCase(currentkey) >= 0)
+		NodeID newnode = this.predecessor;
+
+		if(this.filemap.size() != 0)
+		{
+			//special case
+			if(this.meNode.getId().compareToIgnoreCase(newnode.getId()) < 0)
 			{
-				//current key is less than key of predecessor
-				//add this key to return list
-				pulledfiles.add(currentfile);    
+				//code to check if predecessor of currentnode(i.e. = newnode) is greater than current
+				for (Map.Entry<String, RFile> entry : this.filemap.entrySet()) {
+					currentfile = entry.getValue();
+					currentowner = currentfile.getMeta().getOwner();
+					currentfilename = currentfile.getMeta().getFilename();
+					splitvalues = currentfilename.split("/");
+					trimfilename = splitvalues[splitvalues.length-1];
 
-				//delete the current file
-				file = new File(workingDir+currentfilename);
-				file.delete();
+					//System.out.println("trimmed name is: "+ trimfilename);
+					//tobehashed = owner+":"+filename;
+					currentkey = getSHAHash(currentowner+":"+trimfilename);
+
+					if(newnode.getId().compareToIgnoreCase(currentkey) >= 0)
+					{
+						//current key is less than newnode
+						if(this.meNode.getId().compareToIgnoreCase(currentkey) < 0)
+						{
+							//current key is greater than meNode(this)
+							pulledfiles.add(currentfile);    
+
+							//delete the current file
+							file = new File(workingDir+currentfilename);
+							file.delete();
+
+							//delete that entry from hashmap
+							filemap.remove(currentfilename);
+						}
+					}
+				}
+			}
+			else if(this.meNode.getId().compareToIgnoreCase(newnode.getId()) > 0)
+			{
+				//normal case
+				//code to check if predecessor of currentnode(i.e. = newnode) is less than current
+				for (Map.Entry<String, RFile> entry1 : this.filemap.entrySet()) {
+					currentfile = entry1.getValue();
+					currentowner = currentfile.getMeta().getOwner();
+					currentfilename = currentfile.getMeta().getFilename();
+					splitvalues = currentfilename.split("/");
+					trimfilename = splitvalues[splitvalues.length-1];
+
+					//System.out.println("trimmed name is: "+ trimfilename);
+					//tobehashed = owner+":"+filename;
+					currentkey = getSHAHash(currentowner+":"+trimfilename);
+
+					if(this.meNode.getId().compareToIgnoreCase(currentkey) >= 0 &&
+							newnode.getId().compareToIgnoreCase(currentkey) < 0)
+					{
+						//current key is less than meNode &&
+						//current key is greater than newnode
+						//that means key falls in the range of newnode and it's sucessor
+						//hence not to be sent anywhere
+					}
+					else
+					{
+						//key out of range, send it
+						pulledfiles.add(currentfile);    
+
+						//delete the current file
+						file = new File(workingDir+currentfilename);
+						file.delete();
+
+						//delete that entry from hashmap
+						filemap.remove(currentfilename);
+					}
+
+				}
 			}
 		}
-
-		return null;
+		else
+		{
+			SystemException e = new SystemException();
+			e.setMessage("No File added to server yet");
+			throw e;
+		}
+		return pulledfiles;
 	}
 
 
@@ -800,25 +867,21 @@ public class FileServiceHandler implements FileStore.Iface{
 			System.out.println("Printing the new finger table for newnode:"+this.fingertable);
 			System.out.println("New size of finger table is :"+this.fingertable.size());
 
-			/*			//call the pullunowned files to sucessor node to get files from it
+			//call the pullUnownedFiles files to sucessor node to get files from it
 			transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
 			transport.open();
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client3 = new FileStore.Client(protocol);
 			List<RFile> pulledfiles = client3.pullUnownedFiles();
-
+			transport.close();
+			
 			//added files to the current node's filemap
 			for(int j=0; j < pulledfiles.size();j++)
 			{
 				RFile file = pulledfiles.get(j);
 				this.filemap.put(file.getMeta().getFilename(), file);
 			}
-			 */
-			transport.close();
-
-			//	System.out.println("Files pulled sucessfully...!!");
-
-
+			System.out.println("Files pulled sucessfully...!!");
 		}
 	}
 
@@ -830,22 +893,18 @@ public class FileServiceHandler implements FileStore.Iface{
 		TTransport transport = null;
 		TProtocol protocol = null;
 
-		System.out.println("Printing before remove  table of 9090");
-		System.out.println(fingertable);
-		System.out.println("Sucessor of 9090 is: "+fingertable.get(0));
-		
-
 		update_others("remove");
 		System.out.println("remove done...!!");
-/*		System.out.println("Printing  table of 9090");
-		transport = new TSocket("127.0.1.1",9090);
+
+		transport = new TSocket(this.getSucessor().getId(),this.getSucessor().getPort());
 		transport.open();
 		protocol = new TBinaryProtocol(transport);
 		FileStore.Client client4 = new FileStore.Client(protocol);
-		System.out.println(client4.getFingertable());
-		transport.close();*/
+		client4.setNodePred(this.predecessor);
+		transport.close();
+		System.out.println("UPdated the predecessor..!!");
 
-		/*		//platform for push funtion
+		//platform for push funtion
 		transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
 		transport.open();
 		protocol = new TBinaryProtocol(transport);
@@ -856,7 +915,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		    files.add(entry.getValue());
 		}
 		client3.pushUnownedFiles(files);
-		transport.close();*/
+		transport.close();
 	}
 
 	//////////////////////////////////////////////////////////////
@@ -1045,10 +1104,10 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger twopowervalue = null;
 		BigInteger bigtwo = new BigInteger("2");
 		twopowervalue = bigtwo.pow(i);
-		
+
 		if(i==255)
 			System.out.println("Checking");
-		
+
 		try{
 			//the below code will handle the special case when (newnode - (2^i)) is 
 			//actual physical node
@@ -1107,9 +1166,9 @@ public class FileServiceHandler implements FileStore.Iface{
 					updateExtenstionJoin(recursenode, key, i);
 				}
 			}
-			
-			
-			
+
+
+
 			if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
 			{
 				//the add value should be greater than predecessor of newnode
@@ -1167,10 +1226,10 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger twopowervalue = null;
 		BigInteger bigtwo = new BigInteger("2");
 		twopowervalue = bigtwo.pow(i);
-		
+
 		if(i==255)
 			System.out.println("Checking");
-		
+
 		try{
 			//the below code will handle the special case when (newnode - (2^i)) is 
 			//actual physical node
