@@ -35,6 +35,8 @@ import java.util.Date;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import javax.security.auth.kerberos.KerberosKey;
+
 
 public class FileServiceHandler implements FileStore.Iface{
 
@@ -80,6 +82,46 @@ public class FileServiceHandler implements FileStore.Iface{
 	}
 
 
+	public boolean ifFindSuccCalled(String key)
+	{	
+		//condition if I am the only node
+		if(myCompare(this.meNode.getId(), this.predecessor.getId()) == 0)
+		{
+			return true;
+		}
+		//condition if predecessor is greater than me
+		//if(myCompare(this.meNode.getId(), this.predecessor.getId()) < 0)
+		if(this.meNode.getId().compareToIgnoreCase(this.predecessor.getId()) < 0)
+		{
+			//if(myCompare(key, this.meNode.getId()) > 0)
+			if(this.meNode.getId().compareToIgnoreCase(key) >= 0)
+			{
+				//key is less than equal Menode
+				return true;
+			}
+			//if(myCompare(key, this.predecessor.getId()) > 0)
+			if(this.predecessor.getId().compareToIgnoreCase(key) < 0)
+			{
+				//key is greater predecessor
+				return true;
+			}
+		}
+		else
+		{
+			//if(myCompare(key, this.meNode.getId()) >= 0)
+			if(this.meNode.getId().compareToIgnoreCase(key) >= 0)
+			{
+				//if key is less than equal to meNode
+				//if(myCompare(key, this.predecessor.getId()) < 0)
+				if(this.predecessor.getId().compareToIgnoreCase(key) < 0)
+				{
+					//if key greater than my predecessor
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 
 	@Override
 	public void writeFile(RFile rFile) throws SystemException,
@@ -96,14 +138,31 @@ public class FileServiceHandler implements FileStore.Iface{
 		RFileMetadata rMeta = null;
 		StringBuffer sbuff = null;
 		Boolean isnew = null;
-
-		rMeta = rFile.getMeta();
-
-		String trimfilename = null;
+		
 		String[] splitvalues = null;
+		String trimfilename = null;
+		String filekey = null;
+		String fileowner = rFile.getMeta().getOwner();
 		splitvalues = filename.split("/");
 		trimfilename = splitvalues[splitvalues.length-1];
 
+		//System.out.println("trimmed name is: "+ trimfilename);
+		//tobehashed = owner+":"+filename;
+		filekey = getSHAHash(fileowner+":"+trimfilename);
+		if(!ifFindSuccCalled(filekey))
+		{
+			excep = new SystemException();
+			excep.setMessage("Method called on wrong Node. Make Sure to call findSucc() method first");
+			throw excep;
+		}
+		
+		rMeta = rFile.getMeta();
+
+/*		String trimfilename = null;
+		String[] splitvalues = null;
+		splitvalues = filename.split("/");
+		trimfilename = splitvalues[splitvalues.length-1];
+*/
 		System.out.println("trimmed name is: "+ trimfilename);
 		file = new File(workingDir+trimfilename);
 
@@ -195,6 +254,14 @@ public class FileServiceHandler implements FileStore.Iface{
 		RFile rFile = null;
 		//boolean fileexist = false;
 		SystemException excep = null;
+		String filekey = getSHAHash(owner+":"+filename);
+		if(!ifFindSuccCalled(filekey))
+		{
+			excep = new SystemException();
+			excep.setMessage("Method called on wrong Node. Make Sure to call findSucc() method first");
+			throw excep;
+		}
+		
 		if(filemap.containsKey(filename))
 		{
 			// file metadata exist on server
@@ -256,6 +323,13 @@ public class FileServiceHandler implements FileStore.Iface{
 		File file = null;
 		Date date = null;
 		SystemException excep = null;
+		String filekey = getSHAHash(owner+":"+filename);
+		if(!ifFindSuccCalled(filekey))
+		{
+			excep = new SystemException();
+			excep.setMessage("Method called on wrong Node. Make Sure to call findSucc() method first");
+			throw excep;
+		}
 		if(filemap.containsKey(filename))
 		{
 			// file with filename exist on server
@@ -330,15 +404,15 @@ public class FileServiceHandler implements FileStore.Iface{
 
 		SystemException excep = null;
 		try{
-			if(key.compareToIgnoreCase(meNode.id) == 0)
+			if(myCompare(key,meNode.id) == 0)
 			{
 				//client requests is satisfied at the requested node itself
 				return meNode;
 			}
-			else if(key.compareToIgnoreCase(meNode.id) > 0)
+			else if(myCompare(key,meNode.id) > 0)
 			{
 				//key is greater than meNode.id
-				if(key.compareToIgnoreCase(fingertable.get(0).id) <= 0)
+				if(myCompare(key,fingertable.get(0).id) <= 0)
 				{
 					//key is less than first finger table entry
 					//temp/go directly to successor function
@@ -412,11 +486,12 @@ public class FileServiceHandler implements FileStore.Iface{
 		SystemException excep;
 		boolean recurse = true;
 		//	System.out.println("findPred called on "+this.meNode + "for the key: "+key);
-		if(key.compareToIgnoreCase(meNode.id) > 0)
-			//if(key.compareToIgnoreCase(meNode.id) > 0 || key.compareToIgnoreCase(fingertable.get(0).getId()) <= 0)
+		//System.out.println(key.length());
+		if(myCompare(key,meNode.id) > 0)
+			//if(key.myCompare(meNode.id) > 0 || key.myCompare(fingertable.get(0).getId()) <= 0)
 		{
 			//key is greater than meNode.id
-			if(key.compareToIgnoreCase(fingertable.get(0).getId()) <= 0)
+			if(myCompare(key,fingertable.get(0).getId()) <= 0)
 			{
 				//key is less than or equal to first finger table entry
 				//go directly to successor function
@@ -428,13 +503,13 @@ public class FileServiceHandler implements FileStore.Iface{
 		}
 
 		//Sanket: duplicate logic
-		if(key.compareToIgnoreCase(fingertable.get(0).getId()) == 0)
+		if(myCompare(key,fingertable.get(0).getId()) == 0)
 		{
 			return meNode;
 		}
 
 
-		if(meNode.getId().compareToIgnoreCase(fingertable.get(0).getId()) > 0)
+		if(myCompare(meNode.getId(),fingertable.get(0).getId()) > 0)
 		{
 			//condition is satisfied for the last node in the chord
 			//first finger table entry will less than current node key
@@ -451,7 +526,7 @@ public class FileServiceHandler implements FileStore.Iface{
 			keyBig = new BigInteger(b);
 			//System.out.println("Biginterger for first finger table entry at 92 is:"+ keyBig);
 
-			if((key.compareToIgnoreCase(fingertable.get(0).getId()) < 0) || (key.compareToIgnoreCase(meNode.getId()) > 0))
+			if((myCompare(key,fingertable.get(0).getId()) < 0) || (myCompare(key,meNode.getId()) > 0))
 			{
 				//first finger table entry is greater than the key
 				//means that first entry will be successor of the key
@@ -475,7 +550,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				}*/
 				if(pred != null && next != null)
 				{
-					if(key.compareToIgnoreCase(pred.getId()) == 0)
+					if(myCompare(key,pred.getId()) == 0)
 					{
 						System.out.println("Exact key found!!!");
 						// if key matches to current node
@@ -484,11 +559,11 @@ public class FileServiceHandler implements FileStore.Iface{
 						recurse = false;
 						break;
 					}
-					if(pred.getId().compareToIgnoreCase(next.getId()) > 0	)
+					if(myCompare(pred.getId(),next.getId()) > 0	)
 					{
 						//additional case if i entry is greater than i+1
 						//in this case just return the first entry blindly
-						if(pred.getId().compareToIgnoreCase(key) <= 0 || next.getId().compareToIgnoreCase(key) >=0)
+						if(myCompare(pred.getId(),key) <= 0 || myCompare(next.getId(),key) >=0)
 						{	
 							nodetoreturn = pred;
 							recurse = false;
@@ -496,9 +571,9 @@ public class FileServiceHandler implements FileStore.Iface{
 						}
 
 					}
-					else if(key.compareToIgnoreCase(pred.getId()) > 0)
+					else if(myCompare(key,pred.getId()) > 0)
 					{
-						if(key.compareToIgnoreCase(next.getId()) <= 0)
+						if(myCompare(key,next.getId()) <= 0)
 						{
 							// if key is in between finger table entry i and i+1
 							//System.out.println("Entry between i and i+1 found");
@@ -645,9 +720,9 @@ public class FileServiceHandler implements FileStore.Iface{
 		TProtocol protocol = null;
 		// TODO Auto-generated method stub
 		NodeID nodepred = null;
-		if(this.meNode.getId().compareToIgnoreCase(nodeId.getId()) <= 0)
+		if(this.meNode.getId().myCompare(nodeId.getId()) <= 0)
 		{
-			if(this.fingertable.get(idx).getId().compareToIgnoreCase(nodeId.getId()) > 0)
+			if(this.fingertable.get(idx).getId().myCompare(nodeId.getId()) > 0)
 			{
 				this.fingertable.set(idx, nodeId);
 				nodepred = this.predecessor;
@@ -677,15 +752,15 @@ public class FileServiceHandler implements FileStore.Iface{
 		String trimfilename = null;
 		File file = null;
 
-		
+		pulledfiles = new ArrayList<RFile>();
 
 		NodeID newnode = this.predecessor;
 
 		if(this.filemap.size() != 0)
 		{
-			pulledfiles = new ArrayList<RFile>();
+
 			//special case
-			if(this.meNode.getId().compareToIgnoreCase(newnode.getId()) < 0)
+			if(myCompare(this.meNode.getId(),newnode.getId()) < 0)
 			{
 				//code to check if predecessor of currentnode(i.e. = newnode) is greater than current
 				for (Map.Entry<String, RFile> entry : this.filemap.entrySet()) {
@@ -699,10 +774,10 @@ public class FileServiceHandler implements FileStore.Iface{
 					//tobehashed = owner+":"+filename;
 					currentkey = getSHAHash(currentowner+":"+trimfilename);
 
-					if(newnode.getId().compareToIgnoreCase(currentkey) >= 0)
+					if(myCompare(newnode.getId(),currentkey) >= 0)
 					{
 						//current key is less than newnode
-						if(this.meNode.getId().compareToIgnoreCase(currentkey) < 0)
+						if(myCompare(this.meNode.getId(),currentkey) < 0)
 						{
 							//current key is greater than meNode(this)
 							pulledfiles.add(currentfile);    
@@ -717,7 +792,7 @@ public class FileServiceHandler implements FileStore.Iface{
 					}
 				}
 			}
-			else if(this.meNode.getId().compareToIgnoreCase(newnode.getId()) > 0)
+			else if(myCompare(this.meNode.getId(),newnode.getId()) > 0)
 			{
 				//normal case
 				//code to check if predecessor of currentnode(i.e. = newnode) is less than current
@@ -732,8 +807,8 @@ public class FileServiceHandler implements FileStore.Iface{
 					//tobehashed = owner+":"+filename;
 					currentkey = getSHAHash(currentowner+":"+trimfilename);
 
-					if(this.meNode.getId().compareToIgnoreCase(currentkey) >= 0 &&
-							newnode.getId().compareToIgnoreCase(currentkey) < 0)
+					if(myCompare(this.meNode.getId(),currentkey) >= 0 &&
+							myCompare(newnode.getId(),currentkey) < 0)
 					{
 						//current key is less than meNode &&
 						//current key is greater than newnode
@@ -764,8 +839,10 @@ public class FileServiceHandler implements FileStore.Iface{
 			throw e;*/
 		}
 		//delete that entry from hashmap
-		for (int j = 0; j < pulledfiles.size(); j++) {
-			this.filemap.remove(pulledfiles.get(j).getMeta().getFilename());
+		if(pulledfiles!=null){
+			for (int j = 0; j < pulledfiles.size(); j++) {
+				this.filemap.remove(pulledfiles.get(j).getMeta().getFilename());
+			}
 		}
 		return pulledfiles;
 	}
@@ -849,25 +926,33 @@ public class FileServiceHandler implements FileStore.Iface{
 				 */
 			}
 
+			if(this.meNode.port == 9092)
+			{
+				System.out.println("pause");
+			}
+			
 			//set the successor of the newnode
 			this.sucessor = this.fingertable.get(0);
 
 			//set the predecessor of the newnode
 			//the predecessor of the successor will be the predecessor of the newnode
 			// make RPC call to successor to get it's predecessor
-			transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			//transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			transport = new TSocket(this.getNodeSucc().getIp(), this.getNodeSucc().getPort());
 			transport.open();
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client = new FileStore.Client(protocol);
 			//RPC call on the successor node to findPred method with 
 			// key = key of successor which will give predecessor of successor
-			nodetosetaspredecessor = client.findPred(this.getSucessor().getId());
+		//	nodetosetaspredecessor = client.findPred(this.getSucessor().getId());
+			nodetosetaspredecessor = client.findPred(this.getNodeSucc().getId());
 			this.predecessor = nodetosetaspredecessor;
 			transport.close();
 
 			//update the predecessor of the successor
 			// make RPC call to successor to set it's predecessor to newnode
-			transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			//transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			transport = new TSocket(this.getNodeSucc().getIp(), this.getNodeSucc().getPort());
 			transport.open();
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client2 = new FileStore.Client(protocol);
@@ -883,13 +968,14 @@ public class FileServiceHandler implements FileStore.Iface{
 			System.out.println("New size of finger table is :"+this.fingertable.size());
 
 			//call the pullUnownedFiles files to sucessor node to get files from it
-			transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			//transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+			transport = new TSocket(this.getNodeSucc().getIp(), this.getNodeSucc().getPort());
 			transport.open();
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client3 = new FileStore.Client(protocol);
 			List<RFile> pulledfiles = client3.pullUnownedFiles();
 			transport.close();
-			if(pulledfiles != null){
+			if(pulledfiles.size() != 0){
 				//added files to the current node's filemap
 				for(int j=0; j < pulledfiles.size();j++)
 				{
@@ -899,13 +985,6 @@ public class FileServiceHandler implements FileStore.Iface{
 				System.out.println("Files pulled sucessfully...!!");
 			}
 		}
-		/*		transport = new TSocket("127.0.1.1",9091);
-		transport.open();
-		protocol = new TBinaryProtocol(transport);
-		FileStore.Client client5 = new FileStore.Client(protocol);
-		NodeID tempsucc = client5.findSucc("a6b873b993b8001a41955edf17f4e4b23758155e49d5ab4d1e8c7daf93e8ed0d");
-		System.out.println("temp succ is "+tempsucc);
-		transport.close();*/
 	}
 
 
@@ -915,11 +994,14 @@ public class FileServiceHandler implements FileStore.Iface{
 		// TODO Auto-generated method stub
 		TTransport transport = null;
 		TProtocol protocol = null;
-
+		NodeID tempSucc = null;
+		tempSucc = this.getNodeSucc();
+		
 		update_others("remove");
 		System.out.println("remove done...!!");
 
-		transport = new TSocket(this.getSucessor().getIp(),this.getSucessor().getPort());
+		//transport = new TSocket(this.getSucessor().getIp(),this.getSucessor().getPort());
+		transport = new TSocket(this.getNodeSucc().getIp(),this.getNodeSucc().getPort());
 		transport.open();
 		protocol = new TBinaryProtocol(transport);
 		FileStore.Client client4 = new FileStore.Client(protocol);
@@ -928,7 +1010,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		System.out.println("UPdated the predecessor..!!");
 
 		//platform for push funtion
-		transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
+		transport = new TSocket(tempSucc.getIp(), tempSucc.getPort());
 		transport.open();
 		protocol = new TBinaryProtocol(transport);
 		FileStore.Client client3 = new FileStore.Client(protocol);
@@ -987,7 +1069,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				protocol = new TBinaryProtocol(transport);
 				FileStore.Client client3 = new FileStore.Client(protocol);
 				nodeq = client3.getNodeSucc();
-				if(key.compareToIgnoreCase(nodeq.getId()) == 0)
+				if(key.myCompare(nodeq.getId()) == 0)
 				{
 					//here special case is satisfied
 					nodep = nodeq;
@@ -1057,7 +1139,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				/*
 				//the below code will handle the special case when (newnode - (2^i)) is 
 				//actual physical node
-				if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+				if(nodep.getId().myCompare(this.meNode.getId()) == 0)
 				{
 					//node need not to do the RPC
 					//to avoid the calling RPC on the the same node
@@ -1070,7 +1152,7 @@ public class FileServiceHandler implements FileStore.Iface{
 					protocol = new TBinaryProtocol(transport);
 					FileStore.Client client3 = new FileStore.Client(protocol);
 					nodeq = client3.getNodeSucc();
-					if(key.compareToIgnoreCase(nodeq.getId()) == 0)
+					if(key.myCompare(nodeq.getId()) == 0)
 					{
 						//here special case is satisfied
 						nodep = nodeq;
@@ -1085,17 +1167,17 @@ public class FileServiceHandler implements FileStore.Iface{
 				//convert this add value to hexString to compare
 				String addValString = getHexStringEquuivalent(addvalue);
 
-				if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
+				if(addValString.myCompare(this.predecessor.getId()) > 0)
 				{
 					//the add value should be greater than predecessor of newnode
 					//check the condition why added equal to sign
-					if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
+					if(addValString.myCompare(this.meNode.getId()) <= 0)
 					{
 						//the add value should be less than the newnode
 
 						//if both above conditions are satisfied then make RPC
 						//call to updatefinger on node P
-						if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+						if(nodep.getId().myCompare(this.meNode.getId()) == 0)
 						{
 							//node need to do the RPC
 							//to avoid the calling RPC on the the same node
@@ -1134,7 +1216,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		try{
 			//the below code will handle the special case when (newnode - (2^i)) is 
 			//actual physical node
-			if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+			if(myCompare(nodep.getId(),this.meNode.getId()) == 0)
 			{
 				//node need not to do the RPC
 				//to avoid the calling RPC on the the same node
@@ -1147,7 +1229,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				protocol = new TBinaryProtocol(transport);
 				FileStore.Client client3 = new FileStore.Client(protocol);
 				nodeq = client3.getNodeSucc();
-				if(key.compareToIgnoreCase(nodeq.getId()) == 0)
+				if(myCompare(key,nodeq.getId()) == 0)
 				{
 					//here special case is satisfied
 					nodep = nodeq;
@@ -1161,14 +1243,16 @@ public class FileServiceHandler implements FileStore.Iface{
 			//check if this addvalue is in between pred(newnode) and newnode
 			//convert this add value to hexString to compare
 			String addValString = getHexStringEquuivalent(addvalue);
+			
+			//addValString = ifkeygreaterthanmaxvalue(addValString);
 
 			//Special Case to check when pred(newnode) is greater than newnode
-			if(this.meNode.getId().compareToIgnoreCase(this.predecessor.getId()) < 0)
+			if(myCompare(this.meNode.getId(),this.predecessor.getId()) < 0)
 			{
-				if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0 || addValString.compareToIgnoreCase(this.predecessor.getId()) >= 0)
+				if(myCompare(addValString,this.meNode.getId()) <= 0 || myCompare(addValString,this.predecessor.getId()) >= 0)
 				{
 					//key is less than newnode
-					if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+					if(myCompare(nodep.getId(),this.meNode.getId()) == 0)
 					{
 						//no need to do the RPC
 						//to avoid the calling RPC on the the same node
@@ -1184,25 +1268,27 @@ public class FileServiceHandler implements FileStore.Iface{
 						//client.updateFinger(i-1, this.meNode);
 						client.updateFinger(i, this.meNode);
 						transport.close();
-					}
+					//}
 					NodeID recursenode = findPred(nodep.getId());
 					updateExtenstionJoin(recursenode, key, i);
+					}
 				}
 			}
 
 
 
-			if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
+			if(myCompare(addValString,this.predecessor.getId()) > 0)
 			{
 				//the add value should be greater than predecessor of newnode
 				//check the condition why added equal to sign
-				if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
+				//addValString = ifkeygreaterthanmaxvalue(addValString);
+				if(myCompare(addValString,this.meNode.getId()) <= 0)
 				{
 					//the add value should be less than the newnode
 
 					//if both above conditions are satisfied then make RPC
 					//call to updatefinger on node P
-					if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+					if(myCompare(nodep.getId(),this.meNode.getId()) == 0)
 					{
 						//no need to do the RPC
 						//to avoid the calling RPC on the the same node
@@ -1220,10 +1306,10 @@ public class FileServiceHandler implements FileStore.Iface{
 						//	System.out.println("Join Updating "+i+" th entry of "+nodep.getPort()+" to "+this.meNode.getPort());
 						client.updateFinger(i, this.meNode);
 						transport.close();
-					}
+					//}
 					NodeID recursenode = findPred(nodep.getId());
 					//System.out.println("I am getting predecessor as: "+ recursenode.getPort());
-					//	if(recursenode.getId().compareToIgnoreCase(nodep.getId()) == 0)
+					//	if(recursenode.getId().myCompare(nodep.getId()) == 0)
 					//	{
 					//condition occured when there s only one node
 					//		return;
@@ -1231,6 +1317,7 @@ public class FileServiceHandler implements FileStore.Iface{
 					//	else{
 					updateExtenstionJoin(recursenode, key, i);
 					//	}
+					}
 				}
 
 			}
@@ -1256,7 +1343,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		try{
 			//the below code will handle the special case when (newnode - (2^i)) is 
 			//actual physical node
-			if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+			if(myCompare(nodep.getId(),this.meNode.getId()) == 0)
 			{
 				//node need not to do the RPC
 				//to avoid the calling RPC on the the same node
@@ -1269,7 +1356,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				protocol = new TBinaryProtocol(transport);
 				FileStore.Client client3 = new FileStore.Client(protocol);
 				nodeq = client3.getNodeSucc();
-				if(key.compareToIgnoreCase(nodeq.getId()) == 0)
+				if(myCompare(key,nodeq.getId()) == 0)
 				{
 					//here special case is satisfied
 					nodep = nodeq;
@@ -1286,18 +1373,18 @@ public class FileServiceHandler implements FileStore.Iface{
 
 
 			//Special Case to check when pred(newnode) is greater than newnode
-			if(this.meNode.getId().compareToIgnoreCase(this.predecessor.getId()) < 0)
+			if(myCompare(this.meNode.getId(),this.predecessor.getId()) < 0)
 			{
-				if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0 || addValString.compareToIgnoreCase(this.predecessor.getId()) >= 0)
+				if(myCompare(addValString,this.meNode.getId()) <= 0 || myCompare(addValString,this.predecessor.getId()) >= 0)
 				{
 					//key is less than newnode
-					if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+					if(myCompare(nodep.getId(),this.meNode.getId()) == 0)
 					{
 						//no need to do the RPC
 						//to avoid the calling RPC on the the same node
 						//updateFinger(i-1, this.meNode);
 						System.out.println("Remove Local Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
-						updateFinger(i, this.fingertable.get(0));
+						//updateFinger(i, this.fingertable.get(0));
 					}
 					else{
 						transport = new TSocket(nodep.getIp(), nodep.getPort());
@@ -1316,17 +1403,17 @@ public class FileServiceHandler implements FileStore.Iface{
 			}
 
 
-			if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
+			if(myCompare(addValString,this.predecessor.getId()) > 0)
 			{
 				//the add value should be greater than predecessor of newnode
 				//check the condition why added equal to sign
-				if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
+				if(myCompare(addValString,this.meNode.getId()) <= 0)
 				{
 					//the add value should be less than the newnode
 
 					//if both above conditions are satisfied then make RPC
 					//call to updatefinger on node P
-					if(nodep.getId().compareToIgnoreCase(this.meNode.getId()) == 0)
+					if(myCompare(nodep.getId(),this.meNode.getId()) == 0)
 					{
 						//no need to do the RPC
 						//to avoid the calling RPC on the the same node
@@ -1348,7 +1435,7 @@ public class FileServiceHandler implements FileStore.Iface{
 					NodeID recursenode = findPred(nodep.getId());
 					//NodeID recursenode = this.getNodeSucc();
 					System.out.println("I am getting predecessor as: "+ recursenode.getPort());
-					//	if(recursenode.getId().compareToIgnoreCase(nodep.getId()) == 0)
+					//	if(recursenode.getId().myCompare(nodep.getId()) == 0)
 					//	{
 					//condition occured when there s only one node
 					//		return;
@@ -1425,11 +1512,11 @@ public class FileServiceHandler implements FileStore.Iface{
 				//convert this add value to hexString to compare
 				String addValString = getHexStringEquuivalent(addvalue);
 
-				if(addValString.compareToIgnoreCase(this.predecessor.getId()) > 0)
+				if(addValString.myCompare(this.predecessor.getId()) > 0)
 				{
 					//the add value should be greater than predecessor of newnode
 					//check the condition why added equal to sign
-					if(addValString.compareToIgnoreCase(this.meNode.getId()) <= 0)
+					if(addValString.myCompare(this.meNode.getId()) <= 0)
 					{
 						//the add value should be less than the newnode
 
@@ -1545,7 +1632,83 @@ public class FileServiceHandler implements FileStore.Iface{
 		return this.fingertable;
 	}
 
+	public int myCompare(String thiskey,String comparewithkey){
 
+		BigInteger thisbig = null;
+		BigInteger comparewithbig = null;
+		BigInteger subvalue = null;
 
+		BigInteger maxvalue = null;
+		BigInteger bigtwo = new BigInteger("2");
+		BigInteger thismodvalue = null;
+		maxvalue = bigtwo.pow(256);
+		int returnvalue;
+		/*if(thiskey.length() > 64)
+			System.out.println("thiskey is greater than 64");
+		if(comparewithkey.length() > 64)
+			System.out.println("compare with greater than 64");*/
 
+		thisbig = getBigIntegerEquivalent(thiskey);
+		comparewithbig = getBigIntegerEquivalent(comparewithkey);
+
+		if(thiskey.length()!=comparewithkey.length())
+		{
+			thisbig = getBigIntegerEquivalent(thiskey);
+			comparewithbig = getBigIntegerEquivalent(comparewithkey);
+			//thisbig = thisbig.mod(maxvalue);
+			//comparewithbig = comparewithbig.mod(maxvalue);
+			subvalue = comparewithbig.subtract(thisbig);
+			//subvalue = thisbig.subtract(comparewithbig);
+			/*if(subvalue.signum() > 0 )
+			{
+				thismodvalue = thisbig.mod(maxvalue);
+				if(thisbig.compareTo(thismodvalue) == 0)
+				{
+					returnvalue = -1;
+				}
+				else
+					returnvalue = 1;
+			}
+			if(thisbig.mod(maxvalue).compareTo(comparewithbig) < 0)
+			{
+				returnvalue = 1;
+			}*/
+			if(subvalue.signum() > 0)
+			{
+				returnvalue = -1;
+				//returnvalue = 1;
+			}
+			else if(subvalue.signum() < 0)
+			{
+				returnvalue = 1;
+				//returnvalue = -1;
+			}
+			else
+				returnvalue = 0;
+		}
+		else
+		{
+			returnvalue = thiskey.compareToIgnoreCase(comparewithkey);
+		}
+
+		return returnvalue;
+	}
+
+	public String ifkeygreaterthanmaxvalue(String key)
+	{
+		String newkey = null;
+		BigInteger maxvalue = null;
+		BigInteger bigtwo = new BigInteger("2");
+		//maxvalue = bigtwo.pow(256);
+		maxvalue = bigtwo.pow(256);
+		BigInteger bigkey = getBigIntegerEquivalent(key);
+		
+/*		if(bigkey.compareTo(maxvalue) > 0)
+		{
+			bigkey = bigkey.mod(maxvalue);
+		}*/
+		bigkey = bigkey.add(maxvalue);
+		newkey = getHexStringEquuivalent(bigkey);
+		return newkey;
+	}
 }

@@ -88,6 +88,10 @@ public class FileClient {
 			//nodetoconnect = client.findSucc("5d730683aeb0effe1e2ae2ba1517ddaf09ee5dc725587cbffc162378f199e4d6");
 			transport.close();
 
+			/*nodetoconnect = new NodeID();
+			nodetoconnect.ip = "127.0.1.1";
+			nodetoconnect.port = 9090;*/
+			
 			System.out.println("request should be processed by: "+nodetoconnect.ip+":"+nodetoconnect.port);
 
 			transport = new TSocket(nodetoconnect.getIp(), nodetoconnect.getPort());

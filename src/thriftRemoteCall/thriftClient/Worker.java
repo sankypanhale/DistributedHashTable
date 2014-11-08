@@ -31,7 +31,7 @@ public class Worker {
 		List<NodeID> fingerworker = null;
 		try {
 	
-	 	transport = new TSocket("localhost", 9092);
+	 	transport = new TSocket("localhost", 7072);
 			transport.open();
 
 			protocol = new TBinaryProtocol(transport);
@@ -39,7 +39,7 @@ public class Worker {
 
 			existingnode = new NodeID();
 			existingnode.setIp("127.0.1.1");
-			existingnode.setPort(9090);
+			existingnode.setPort(7070);
 			existingnode.setId(getSHAHash(existingnode.ip+":"+existingnode.port));
 			client.join(existingnode);
 		//	client.remove();

@@ -24,7 +24,7 @@ public class Bigcheck {
 		//get key for the current node
 		//String id = getSHAHash(nodeId.getIp(),Integer.toString(nodeId.getPort()));
 		//nodeId.setId(id);
-		String oldkey = "13c64780fee5c358b288c340a003d3274fe33fd04dce91a23fd158ea911c37b2e";
+		String oldkey = "bc64780fee5c358b288c340a003d3274fe33fd04dce91a23fd158ea911c37b2e";
 		//BigInteger equivalent of key
 		byte[] b = new BigInteger(oldkey,16).toByteArray();
 		BigInteger tempBig2 = new BigInteger(b);

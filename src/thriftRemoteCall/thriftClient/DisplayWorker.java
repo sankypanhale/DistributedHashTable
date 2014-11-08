@@ -33,7 +33,7 @@ public class DisplayWorker {
 		try {
 			//code to printfinger table
 		int port = 9090;
-/*		transport = new TSocket("127.0.1.1", port);
+		transport = new TSocket("127.0.1.1", port);
 			transport.open();
 
 			protocol = new TBinaryProtocol(transport);
@@ -43,10 +43,10 @@ public class DisplayWorker {
 			System.out.println("Finger table in worker is: "+fingerworker);
 			writeFingertable(fingerworker,port);
 			transport.close();
-			*/
+			
 			
 			//call the pullUnownedFiles files to sucessor node to get files from it
-			transport = new TSocket("127.0.1.1",port);
+/*			transport = new TSocket("127.0.1.1",port);
 			transport.open();
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client3 = new FileStore.Client(protocol);
@@ -60,8 +60,8 @@ public class DisplayWorker {
 				System.out.println("Files pulled."+file.getMeta().filename);
 				//this.filemap.put(file.getMeta().getFilename(), file);
 			}
-			System.out.println("Files pulled sucessfully...!!");
-			
+			System.out.println("Files pulled sucessfully Woeker...!!");
+	*/		
 			
 			
 		} catch (SystemException e) {
