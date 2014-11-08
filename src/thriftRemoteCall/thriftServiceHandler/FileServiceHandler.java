@@ -99,7 +99,13 @@ public class FileServiceHandler implements FileStore.Iface{
 
 		rMeta = rFile.getMeta();
 
-		file = new File(workingDir+filename);
+		String trimfilename = null;
+		String[] splitvalues = null;
+		splitvalues = filename.split("/");
+		trimfilename = splitvalues[splitvalues.length-1];
+
+		System.out.println("trimmed name is: "+ trimfilename);
+		file = new File(workingDir+trimfilename);
 
 		// code to generate SHA-256 hash code and save it to RFile object
 		try {
@@ -320,6 +326,8 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger tempBig2 = new BigInteger(b);
 		//		System.out.println("Biginterger for key is:"+ tempBig2);
 
+		//	System.out.println("Findsucc called");
+
 		SystemException excep = null;
 		try{
 			if(key.compareToIgnoreCase(meNode.id) == 0)
@@ -403,6 +411,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		int i;
 		SystemException excep;
 		boolean recurse = true;
+		//	System.out.println("findPred called on "+this.meNode + "for the key: "+key);
 		if(key.compareToIgnoreCase(meNode.id) > 0)
 			//if(key.compareToIgnoreCase(meNode.id) > 0 || key.compareToIgnoreCase(fingertable.get(0).getId()) <= 0)
 		{
@@ -668,12 +677,13 @@ public class FileServiceHandler implements FileStore.Iface{
 		String trimfilename = null;
 		File file = null;
 
-		pulledfiles = new ArrayList<RFile>();
+		
 
 		NodeID newnode = this.predecessor;
 
 		if(this.filemap.size() != 0)
 		{
+			pulledfiles = new ArrayList<RFile>();
 			//special case
 			if(this.meNode.getId().compareToIgnoreCase(newnode.getId()) < 0)
 			{
@@ -698,11 +708,11 @@ public class FileServiceHandler implements FileStore.Iface{
 							pulledfiles.add(currentfile);    
 
 							//delete the current file
-							file = new File(workingDir+currentfilename);
+							file = new File(workingDir+trimfilename);
 							file.delete();
 
 							//delete that entry from hashmap
-							filemap.remove(currentfilename);
+							//	filemap.remove(currentfilename);
 						}
 					}
 				}
@@ -736,11 +746,11 @@ public class FileServiceHandler implements FileStore.Iface{
 						pulledfiles.add(currentfile);    
 
 						//delete the current file
-						file = new File(workingDir+currentfilename);
+						file = new File(workingDir+trimfilename);
 						file.delete();
 
 						//delete that entry from hashmap
-						filemap.remove(currentfilename);
+						//filemap.remove(currentfilename);
 					}
 
 				}
@@ -748,9 +758,14 @@ public class FileServiceHandler implements FileStore.Iface{
 		}
 		else
 		{
-			SystemException e = new SystemException();
+			System.out.println("No file added to server");
+			/*SystemException e = new SystemException();
 			e.setMessage("No File added to server yet");
-			throw e;
+			throw e;*/
+		}
+		//delete that entry from hashmap
+		for (int j = 0; j < pulledfiles.size(); j++) {
+			this.filemap.remove(pulledfiles.get(j).getMeta().getFilename());
 		}
 		return pulledfiles;
 	}
@@ -874,15 +889,23 @@ public class FileServiceHandler implements FileStore.Iface{
 			FileStore.Client client3 = new FileStore.Client(protocol);
 			List<RFile> pulledfiles = client3.pullUnownedFiles();
 			transport.close();
-			
-			//added files to the current node's filemap
-			for(int j=0; j < pulledfiles.size();j++)
-			{
-				RFile file = pulledfiles.get(j);
-				this.filemap.put(file.getMeta().getFilename(), file);
+			if(pulledfiles != null){
+				//added files to the current node's filemap
+				for(int j=0; j < pulledfiles.size();j++)
+				{
+					RFile file = pulledfiles.get(j);
+					this.filemap.put(file.getMeta().getFilename(), file);
+				}
+				System.out.println("Files pulled sucessfully...!!");
 			}
-			System.out.println("Files pulled sucessfully...!!");
 		}
+		/*		transport = new TSocket("127.0.1.1",9091);
+		transport.open();
+		protocol = new TBinaryProtocol(transport);
+		FileStore.Client client5 = new FileStore.Client(protocol);
+		NodeID tempsucc = client5.findSucc("a6b873b993b8001a41955edf17f4e4b23758155e49d5ab4d1e8c7daf93e8ed0d");
+		System.out.println("temp succ is "+tempsucc);
+		transport.close();*/
 	}
 
 
@@ -896,7 +919,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		update_others("remove");
 		System.out.println("remove done...!!");
 
-		transport = new TSocket(this.getSucessor().getId(),this.getSucessor().getPort());
+		transport = new TSocket(this.getSucessor().getIp(),this.getSucessor().getPort());
 		transport.open();
 		protocol = new TBinaryProtocol(transport);
 		FileStore.Client client4 = new FileStore.Client(protocol);
@@ -912,7 +935,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		List<RFile> files = null;
 		files = new ArrayList<RFile>();
 		for (Map.Entry<String, RFile> entry : this.filemap.entrySet()) {
-		    files.add(entry.getValue());
+			files.add(entry.getValue());
 		}
 		client3.pushUnownedFiles(files);
 		transport.close();

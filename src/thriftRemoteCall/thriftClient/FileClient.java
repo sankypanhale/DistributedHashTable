@@ -30,7 +30,7 @@ public class FileClient {
 
 		RFile rfileobject = null;
 		RFile rfileobject2;
-		
+
 
 		FileReadHandlerClient filehandler = null;
 		String operation = null;
@@ -38,7 +38,7 @@ public class FileClient {
 		String server = null;
 		String owner = null;
 		int port;
-		
+
 		String operationkey = null;
 		NodeID nodetoconnect = null;
 
@@ -81,21 +81,21 @@ public class FileClient {
 			transportConsole = new TIOStreamTransport(System.out);
 			protocolConsole = new TJSONProtocol(transportConsole);
 
-			
+
 			operationkey = getSHAHash(owner,filename);
 			System.out.println("Key for file is: "+operationkey);
 			nodetoconnect = client.findSucc(operationkey);
 			//nodetoconnect = client.findSucc("5d730683aeb0effe1e2ae2ba1517ddaf09ee5dc725587cbffc162378f199e4d6");
 			transport.close();
-			
+
 			System.out.println("request should be processed by: "+nodetoconnect.ip+":"+nodetoconnect.port);
-			
+
 			transport = new TSocket(nodetoconnect.getIp(), nodetoconnect.getPort());
 			transport.open();
 
 			protocol = new TBinaryProtocol(transport);
 			FileStore.Client client2 = new FileStore.Client(protocol);
-			
+
 			if(operation.equals("write"))
 			{
 				//write
@@ -105,6 +105,7 @@ public class FileClient {
 				rfileobject.setMeta(rmetaobject);
 				filehandler = new FileReadHandlerClient(filename);
 				rfileobject.content = filehandler.readClientFile();
+				//rfileobject.content = rfileobject.getMeta().getFilename();
 				client2.writeFile(rfileobject);
 			}
 			else if(operation.equals("read"))
@@ -131,10 +132,14 @@ public class FileClient {
 				e.printStackTrace();
 			}
 		}
-
 		catch (TTransportException x)
 		{
-			System.out.println("Invalid Server Address...!!");
+			if(x != null)
+			{
+				System.out.println(x.getMessage());
+			}
+			else{
+				System.out.println("Invalid Server Address...!!");}
 			System.exit(0);
 		}
 		catch (TException x) {
@@ -158,7 +163,7 @@ public class FileClient {
 	{
 		String tobehashed = null;
 		String trimfilename = null;
-		
+
 		//System.out.println("File name is" + filename);
 		String[] splitvalues = filename.split("/");
 		trimfilename = splitvalues[splitvalues.length-1];
