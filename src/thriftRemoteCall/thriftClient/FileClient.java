@@ -83,7 +83,7 @@ public class FileClient {
 
 
 			operationkey = getSHAHash(owner,filename);
-			System.out.println("Key for file is: "+operationkey);
+			//System.out.println("Key for file is: "+operationkey);
 			nodetoconnect = client.findSucc(operationkey);
 			//nodetoconnect = client.findSucc("5d730683aeb0effe1e2ae2ba1517ddaf09ee5dc725587cbffc162378f199e4d6");
 			transport.close();
@@ -92,7 +92,7 @@ public class FileClient {
 			nodetoconnect.ip = "127.0.1.1";
 			nodetoconnect.port = 9090;*/
 			
-			System.out.println("request should be processed by: "+nodetoconnect.ip+":"+nodetoconnect.port);
+			//System.out.println("request should be processed by: "+nodetoconnect.ip+":"+nodetoconnect.port);
 
 			transport = new TSocket(nodetoconnect.getIp(), nodetoconnect.getPort());
 			transport.open();

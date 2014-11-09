@@ -63,17 +63,17 @@ public class FileServiceHandler implements FileStore.Iface{
 			System.exit(0);
 		}
 		meNode.id = getSHAHash(meNode.ip+":"+port);
-
+/*
 		System.out.println("Big integer valued to: "+tempBig);
 		System.out.println("Ip is current machine is: "+meNode.ip+":"+port);
 		System.out.println("Current Node Hash key is: "+meNode.id);
 		//sucessor = new NodeID();
-
+*/
 		//calling function to initialise fingertable
 		init_fingertable();
-
+/*
 		System.out.println("FIngertable after init:"+fingertable);
-		System.out.println("Size of finger table is:"+fingertable.size());
+		System.out.println("Size of finger table is:"+fingertable.size());*/
 		workingDir = "./files/";
 		//code to clean the working directory
 		directory = new File(workingDir);
@@ -163,7 +163,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		splitvalues = filename.split("/");
 		trimfilename = splitvalues[splitvalues.length-1];
 */
-		System.out.println("trimmed name is: "+ trimfilename);
+	//	System.out.println("trimmed name is: "+ trimfilename);
 		file = new File(workingDir+trimfilename);
 
 		// code to generate SHA-256 hash code and save it to RFile object
@@ -552,7 +552,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				{
 					if(myCompare(key,pred.getId()) == 0)
 					{
-						System.out.println("Exact key found!!!");
+						//System.out.println("Exact key found!!!");
 						// if key matches to current node
 						nodetoreturn = pred;
 						//return pred;
@@ -833,7 +833,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		}
 		else
 		{
-			System.out.println("No file added to server");
+			//System.out.println("No file added to server");
 			/*SystemException e = new SystemException();
 			e.setMessage("No File added to server yet");
 			throw e;*/
@@ -888,17 +888,17 @@ public class FileServiceHandler implements FileStore.Iface{
 		//BigInteger equivalent of new node key
 		byte[] b = new BigInteger(this.meNode.getId(),16).toByteArray();
 		BigInteger tempBig2 = new BigInteger(b);
-		System.out.println("Biginterger for newly joining node is:"+ tempBig2);
+		//System.out.println("Biginterger for newly joining node is:"+ tempBig2);
 
 		if(this.getMeNode().getId().equals(nodeId.getId()))
 		{
 			//condition is satisfied for the first join call
 			//no need to reintialise the finger table
-			System.out.println("First Join call");
+			//System.out.println("First Join call");
 		}
 		else
 		{
-			System.out.println("1+ Join call");
+		//	System.out.println("1+ Join call");
 			//reinitialize the finger table
 			//fingertable = new ArrayList<NodeID>();
 			for(i=1; i<=256; i++)
@@ -926,10 +926,7 @@ public class FileServiceHandler implements FileStore.Iface{
 				 */
 			}
 
-			if(this.meNode.port == 9092)
-			{
-				System.out.println("pause");
-			}
+			
 			
 			//set the successor of the newnode
 			this.sucessor = this.fingertable.get(0);
@@ -964,8 +961,8 @@ public class FileServiceHandler implements FileStore.Iface{
 			//update_others(this.sucessor,this.meNode);
 			update_others("join");
 
-			System.out.println("Printing the new finger table for newnode:"+this.fingertable);
-			System.out.println("New size of finger table is :"+this.fingertable.size());
+			//System.out.println("Printing the new finger table for newnode:"+this.fingertable);
+			//System.out.println("New size of finger table is :"+this.fingertable.size());
 
 			//call the pullUnownedFiles files to sucessor node to get files from it
 			//transport = new TSocket(this.getSucessor().getIp(), this.getSucessor().getPort());
@@ -982,7 +979,7 @@ public class FileServiceHandler implements FileStore.Iface{
 					RFile file = pulledfiles.get(j);
 					this.filemap.put(file.getMeta().getFilename(), file);
 				}
-				System.out.println("Files pulled sucessfully...!!");
+				//System.out.println("Files pulled sucessfully...!!");
 			}
 		}
 	}
@@ -998,7 +995,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		tempSucc = this.getNodeSucc();
 		
 		update_others("remove");
-		System.out.println("remove done...!!");
+		//System.out.println("remove done...!!");
 
 		//transport = new TSocket(this.getSucessor().getIp(),this.getSucessor().getPort());
 		transport = new TSocket(this.getNodeSucc().getIp(),this.getNodeSucc().getPort());
@@ -1007,7 +1004,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		FileStore.Client client4 = new FileStore.Client(protocol);
 		client4.setNodePred(this.predecessor);
 		transport.close();
-		System.out.println("UPdated the predecessor..!!");
+		//System.out.println("UPdated the predecessor..!!");
 
 		//platform for push funtion
 		transport = new TSocket(tempSucc.getIp(), tempSucc.getPort());
@@ -1120,7 +1117,7 @@ public class FileServiceHandler implements FileStore.Iface{
 			subvalue = bigkey.subtract(twopowervalue);
 			if(subvalue.signum() == -1)
 			{
-				System.out.println("Negative subtarction..!!");
+				//System.out.println("Negative subtarction..!!");
 				maxvalue = bigtwo.pow(255);
 				subvalue = subvalue.add(maxvalue);
 			}
@@ -1210,9 +1207,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger bigtwo = new BigInteger("2");
 		twopowervalue = bigtwo.pow(i);
 
-		if(i==255)
-			System.out.println("Checking");
-
+		
 		try{
 			//the below code will handle the special case when (newnode - (2^i)) is 
 			//actual physical node
@@ -1337,9 +1332,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		BigInteger bigtwo = new BigInteger("2");
 		twopowervalue = bigtwo.pow(i);
 
-		if(i==255)
-			System.out.println("Checking");
-
+		
 		try{
 			//the below code will handle the special case when (newnode - (2^i)) is 
 			//actual physical node
@@ -1383,7 +1376,7 @@ public class FileServiceHandler implements FileStore.Iface{
 						//no need to do the RPC
 						//to avoid the calling RPC on the the same node
 						//updateFinger(i-1, this.meNode);
-						System.out.println("Remove Local Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
+						//System.out.println("Remove Local Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
 						//updateFinger(i, this.fingertable.get(0));
 					}
 					else{
@@ -1393,7 +1386,7 @@ public class FileServiceHandler implements FileStore.Iface{
 						FileStore.Client client = new FileStore.Client(protocol);
 						//client.updateFinger(i, this.meNode);
 						//client.updateFinger(i-1, this.meNode);
-						System.out.println("Remove Remote Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
+						//System.out.println("Remove Remote Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
 						client.updateFinger(i, this.fingertable.get(0));
 						transport.close();
 					}
@@ -1418,7 +1411,7 @@ public class FileServiceHandler implements FileStore.Iface{
 						//no need to do the RPC
 						//to avoid the calling RPC on the the same node
 						//updateFinger(i-1, this.meNode);
-						System.out.println("Remove Local Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
+						//System.out.println("Remove Local Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
 						updateFinger(i, this.fingertable.get(0));
 					}
 					else{
@@ -1428,13 +1421,13 @@ public class FileServiceHandler implements FileStore.Iface{
 						FileStore.Client client = new FileStore.Client(protocol);
 						//client.updateFinger(i, this.meNode);
 						//client.updateFinger(i-1, this.meNode);
-						System.out.println("Remove Remote Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
+						//System.out.println("Remove Remote Updating "+i+" th entry of "+nodep.getPort()+" to "+this.fingertable.get(0));
 						client.updateFinger(i, this.fingertable.get(0));
 						transport.close();
 					}
 					NodeID recursenode = findPred(nodep.getId());
 					//NodeID recursenode = this.getNodeSucc();
-					System.out.println("I am getting predecessor as: "+ recursenode.getPort());
+					//System.out.println("I am getting predecessor as: "+ recursenode.getPort());
 					//	if(recursenode.getId().myCompare(nodep.getId()) == 0)
 					//	{
 					//condition occured when there s only one node
@@ -1694,7 +1687,7 @@ public class FileServiceHandler implements FileStore.Iface{
 		return returnvalue;
 	}
 
-	public String ifkeygreaterthanmaxvalue(String key)
+	/*public String ifkeygreaterthanmaxvalue(String key)
 	{
 		String newkey = null;
 		BigInteger maxvalue = null;
@@ -1706,9 +1699,9 @@ public class FileServiceHandler implements FileStore.Iface{
 /*		if(bigkey.compareTo(maxvalue) > 0)
 		{
 			bigkey = bigkey.mod(maxvalue);
-		}*/
+		}
 		bigkey = bigkey.add(maxvalue);
 		newkey = getHexStringEquuivalent(bigkey);
 		return newkey;
-	}
+	}*/
 }
