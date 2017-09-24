@@ -1,6 +1,5 @@
 /bin
 
-
 ## Plugin-specific files:
 
 # IntelliJ
@@ -15,3 +14,4 @@
 target/
 
 
+*.class
