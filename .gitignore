@@ -1,1 +1,19 @@
 /bin
+
+
+## Plugin-specific files:
+
+# IntelliJ
+/out/
+
+# mpeltonen/sbt-idea plugin
+.idea_modules/
+
+*.iml
+
+.idea/
+target/
+
+
+src/main/java/thriftRemoteCall/thriftUtil/
+
